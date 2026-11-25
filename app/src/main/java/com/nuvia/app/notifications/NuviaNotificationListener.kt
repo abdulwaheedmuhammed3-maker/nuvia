@@ -22,7 +22,6 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.graphics.drawable.IconCompat
 import androidx.core.content.ContextCompat
 import android.Manifest
 import com.nuvia.app.R
@@ -135,23 +134,17 @@ class NuviaNotificationListener : NotificationListenerService() {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
 
             original.actions?.take(3)?.forEach { action ->
-                val iconCompat = try {
-                    action.icon?.let { IconCompat.createFromIcon(it) }
-                } catch (_: Exception) {
-                    null
-                }
-                val actionBuilder = if (iconCompat != null) {
-                    NotificationCompat.Action.Builder(iconCompat, action.title, action.actionIntent)
-                } else {
-                    NotificationCompat.Action.Builder(R.drawable.ic_nuvia_stat, action.title, action.actionIntent)
-                }
+                val actionIcon = action.icon.takeIf { it != 0 } ?: R.drawable.ic_nuvia_stat
+                val actionBuilder = NotificationCompat.Action.Builder(
+                    actionIcon,
+                    action.title,
+                    action.actionIntent
+                )
 
                 action.remoteInputs?.forEach { input ->
                     actionBuilder.addRemoteInput(input.toCompatRemoteInput())
                 }
-                actionBuilder
-                    .setAllowGeneratedReplies(action.allowGeneratedReplies)
-                    .setShowsUserInterface(action.getShowsUserInterface())
+                actionBuilder.setAllowGeneratedReplies(action.allowGeneratedReplies)
                 if (Build.VERSION.SDK_INT >= 28) {
                     actionBuilder.setSemanticAction(action.semanticAction)
                 }
