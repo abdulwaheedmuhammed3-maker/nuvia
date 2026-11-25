@@ -6,7 +6,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -524,9 +523,6 @@ object IslandOverlayController {
         dotView = dot
         closeView = close
 
-        val screenWidth = if (Build.VERSION.SDK_INT >= 30) {
-            context.getSystemService(WindowManager::class.java).currentWindowMetrics.bounds.width()
-        } else context.resources.displayMetrics.widthPixels
         val collapsedWidth = dp(COLLAPSED_WIDTH_DP)
         val collapsedHeight = dp(COLLAPSED_HEIGHT_DP)
 
