@@ -2,7 +2,7 @@
 
 **Nuvia** is an early native Android notification companion built with Kotlin and Jetpack Compose. The first foundation includes a modern dark dashboard, a notification inbox, per-app selection, permission setup, an in-app Dynamic Island preview, a floating overlay preview, and a notification replacement service.
 
-> Project version: 0.1.8.
+> Project version: 0.1.9.
 
 Project status: GitHub Actions builds and tests the debug APK on pushes to main, and builds signed release APKs for version-matched published GitHub Releases. Device-level behaviour still needs verification on the target Android/HyperOS phone.
 
@@ -25,6 +25,17 @@ The project targets Android 16 (API 36) and supports Android 8.0 (API 26) and la
 5. Open **Apps** and choose which apps Nuvia should manage. Calls, alarms, navigation, ongoing service alerts, group summaries and system notifications are preserved.
 
 When the floating island is disabled, **Quiet original notifications** can be enabled separately to keep selected app alerts in the shade without a second pop-up.
+
+## Full audit corrections in 0.1.9
+
+- Rejects malformed/non-stable release tags and chooses the highest valid stable release that contains both APK and checksum assets.
+- Validates that every published release tag exactly matches the Gradle `versionName`.
+- Runs JVM unit tests in CI for release tag parsing and numeric version ordering.
+- Checks that Nuvia's quiet-copy notification channel is enabled and verifies the mirrored notification is active before cancelling the source notification.
+- Does not create an extra island card for notifications deliberately preserved (calls, alarms, ongoing/system alerts).
+- Returns a successful fallback-island result only after the overlay is attached and expanded, so a failed overlay does not cause Nuvia to dismiss the original alert.
+- Ignores app/user cancellation events when dismissing mapped native island notifications, while intentionally ignoring listener-cancel events used by Nuvia's replacement flow.
+- Adds signing-keystore patterns to `.gitignore`.
 
 ## Settings scrolling
 
