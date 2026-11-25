@@ -25,6 +25,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -239,13 +241,18 @@ private fun NuviaRoot() {
 }
 
 @Composable
-private fun PageColumn(content: @Composable ColumnScope.() -> Unit) {
+private fun PageColumn(
+    scrollable: Boolean = false,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val scrollState = rememberScrollState()
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Midnight)
+            .then(if (scrollable) Modifier.verticalScroll(scrollState) else Modifier)
             .padding(horizontal = 20.dp)
-            .padding(top = 18.dp, bottom = 18.dp),
+            .padding(top = 18.dp, bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
         content = content
     )
@@ -293,7 +300,7 @@ private fun HomeScreen(
     onOpenSettings: () -> Unit,
     onOpenInbox: () -> Unit
 ) {
-    PageColumn {
+    PageColumn(scrollable = true) {
         BrandHeader("YOUR NOTIFICATIONS, REIMAGINED")
         Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
             Text("Everything,\nin one flow.", fontSize = 34.sp, lineHeight = 39.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1.1).sp)
@@ -661,7 +668,7 @@ private fun SettingsScreen(
         onRefreshPermissions()
     }
 
-    PageColumn {
+    PageColumn(scrollable = true) {
         BrandHeader("CONTROL THE EXPERIENCE")
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Settings", fontSize = 30.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.8).sp)
