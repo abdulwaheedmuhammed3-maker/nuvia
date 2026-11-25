@@ -31,3 +31,9 @@ internal fun shouldDismissIslandAfterReplacementFailure(
     islandWasShown: Boolean,
     replacementWasPosted: Boolean
 ): Boolean = islandWasShown && !replacementWasPosted
+
+/** Clear a mirrored card for every source removal except the cancellation Nuvia performs itself. */
+internal fun shouldRemoveMirrorForSourceRemoval(
+    removalReason: Int,
+    listenerCancelReason: Int
+): Boolean = removalReason != listenerCancelReason
