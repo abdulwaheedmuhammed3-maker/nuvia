@@ -1,6 +1,7 @@
 package com.nuvia.app.notifications
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -285,6 +286,7 @@ object NuviaHyperIslandController {
         return channel.importance != NotificationManager.IMPORTANCE_NONE
     }
 
+    @SuppressLint("MissingPermission")
     private fun postPermanentIsland(context: Context) {
         ensureChannel(context)
         if (!canPostToIslandChannel(context)) return
@@ -322,6 +324,7 @@ object NuviaHyperIslandController {
         }
     }
 
+    @SuppressLint("MissingPermission")
     private fun postNativeNotification(
         context: Context,
         key: String,
