@@ -31,12 +31,14 @@ internal fun stableVersionFromTag(tag: String): String? {
 
 /** Numeric version comparison with missing trailing components treated as zero. */
 internal fun compareVersions(first: String, second: String): Int {
-    val left = first.split('.').map { it.toIntOrNull() ?: 0 }
-    val right = second.split('.').map { it.toIntOrNull() ?: 0 }
+    val left = first.split('.')
+    val right = second.split('.')
     for (index in 0 until maxOf(left.size, right.size)) {
-        val a = left.getOrElse(index) { 0 }
-        val b = right.getOrElse(index) { 0 }
-        if (a != b) return a.compareTo(b)
+        val a = left.getOrElse(index) { "0" }.trimStart('0').ifEmpty { "0" }
+        val b = right.getOrElse(index) { "0" }.trimStart('0').ifEmpty { "0" }
+        if (a.length != b.length) return a.length.compareTo(b.length)
+        val numericComparison = a.compareTo(b)
+        if (numericComparison != 0) return numericComparison
     }
     return 0
 }
