@@ -67,6 +67,18 @@ jobs:
           set -o pipefail
           gradle --no-daemon --stacktrace :app:lintDebug 2>&1 | tee -a build.log
 
+      - name: Upload Android Lint reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuvia-lint-reports
+          path: |
+            app/build/reports/lint-results-debug.html
+            app/build/reports/lint-results-debug.sarif
+            app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Upload Gradle diagnostic log
         if: always()
         uses: actions/upload-artifact@v4
