@@ -2,7 +2,7 @@
 
 **Nuvia** is an early native Android notification companion built with Kotlin and Jetpack Compose. The first foundation includes a modern dark dashboard, a notification inbox, per-app selection, permission setup, an in-app Dynamic Island preview, a floating overlay preview, and a notification replacement service.
 
-> Project version: 0.1.4.
+> Project version: 0.1.5.
 
 Project status: GitHub Actions builds the debug APK on pushes to main. Device-level behaviour still needs verification on the target Android/HyperOS phone.
 
@@ -26,6 +26,10 @@ The project targets Android 16 (API 36) and supports Android 8.0 (API 26) and la
 6. Enable **Replace original notifications** only after testing the experience with non-critical apps first.
 
 Floating island display is enabled by default for selected apps. Original-notification replacement is deliberately OFF by default; Nuvia does not automatically dismiss source notifications on first install.
+
+## Duplicate notification handling
+
+For selected apps, when the floating island can render, Nuvia now replaces the source alert with a silent copy in the notification shade. The island is the only interrupting pop-up; the quiet copy remains available in the shade with the original content intent and supported actions. The mirror channel uses low importance and no sound or vibration. Calls, alarms, navigation, ongoing service alerts, group summaries and system-category notifications remain untouched. If the island surface or notification-posting permission is unavailable, Nuvia leaves the original notification in place rather than risk losing the alert.
 
 ## What the first foundation does
 
