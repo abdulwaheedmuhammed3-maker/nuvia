@@ -33,6 +33,14 @@ When the floating island is disabled, **Quiet original notifications** can be en
 - Uses a Nuvia-owned action icon when copying action buttons instead of interpreting foreign-app resource IDs in Nuvia's resource namespace, reducing failures in notification mirroring.
 - The Apps screen now initializes selected packages against the installed launcher-app list, avoiding stale package selections in its UI.
 
+- Preserve grouped notifications as source-owned notifications so replacing child alerts cannot leave a stale source-app summary.
+- Clear mirrored shade cards for every source-removal reason except the listener-cancel event Nuvia emits after a successful replacement.
+- Mark native island cards explicitly so process-restart cleanup cannot cancel unrelated untagged Nuvia notifications.
+- Preserve text and data-only RemoteInput entries, including attachment-oriented reply inputs.
+- Translate notification semantic-action and inline-reply edit constants to AndroidX equivalents.
+- Compare numeric version segments without 32-bit integer overflow.
+- Explicitly exclude private notification data from cloud backup and device-to-device transfer rules.
+
 ## Full audit corrections in 0.1.9
 
 - Rejects malformed/non-stable release tags and chooses the highest valid stable release that contains both APK and checksum assets.
@@ -128,14 +136,3 @@ On supported Xiaomi/POCO/Redmi HyperOS firmware, the island is rendered by the s
 - Java: 17
 
 The versions are pinned rather than using dynamic `+` versions.
-
-## Audit fixes in 0.1.11
-
-- Preserve grouped notifications as source-owned notifications so Nuvia does not replace only child alerts and leave a stale source-app group summary.
-- Clear mirrored shade cards for every source-removal reason except the listener-cancel event Nuvia itself emits after a successful replacement.
-- Mark native island cards explicitly, allowing post-restart cleanup to target Nuvia island notifications without cancelling unrelated untagged Nuvia notifications.
-- Preserve both text and data-only RemoteInput entries when copying action buttons, including attachment-oriented reply inputs.
-- Translate notification semantic-action and inline-reply edit constants to AndroidX equivalents before rebuilding actions.
-- Compare numeric version segments as strings so very large version components cannot overflow 32-bit integers.
-- Explicitly exclude private notification data from both cloud backup and device-to-device transfer rules.
-
