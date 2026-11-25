@@ -94,7 +94,6 @@ object NuviaHyperIslandController {
     }
 
     private fun isIslandChannelEnabled(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return true
         val channel = context.getSystemService(NotificationManager::class.java)
             .getNotificationChannel(CHANNEL_ID) ?: return true
         return channel.importance != NotificationManager.IMPORTANCE_NONE
@@ -135,7 +134,7 @@ object NuviaHyperIslandController {
             postPermanentIsland(app)
         } else {
             NotificationManagerCompat.from(app).cancel(PERMANENT_ID)
-            if (Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(app)) {
+            if (Settings.canDrawOverlays(app)) {
                 IslandOverlayController.ensurePersistent(app)
             } else {
                 IslandOverlayController.hide()
@@ -164,7 +163,7 @@ object NuviaHyperIslandController {
                 message = message,
                 contentIntent = sbn.notification.contentIntent
             )
-        } else if (Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(app)) {
+        } else if (Settings.canDrawOverlays(app)) {
             val icon = runCatching { app.packageManager.getApplicationIcon(sbn.packageName) }.getOrNull()
             return IslandOverlayController.showNotification(
                 context = app,
@@ -263,28 +262,25 @@ object NuviaHyperIslandController {
     }
 
     private fun ensureChannel(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager = context.getSystemService(NotificationManager::class.java)
-            if (manager.getNotificationChannel(CHANNEL_ID) == null) {
-                manager.createNotificationChannel(
-                    NotificationChannel(
-                        CHANNEL_ID,
-                        "Nuvia HyperIsland",
-                        NotificationManager.IMPORTANCE_HIGH
-                    ).apply {
-                        description = "Silent notifications used to render Nuvia's HyperOS island"
-                        setSound(null, null)
-                        enableVibration(false)
-                        setShowBadge(false)
-                    }
-                )
-            }
+        val manager = context.getSystemService(NotificationManager::class.java)
+        if (manager.getNotificationChannel(CHANNEL_ID) == null) {
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    CHANNEL_ID,
+                    "Nuvia HyperIsland",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Silent notifications used to render Nuvia's HyperOS island"
+                    setSound(null, null)
+                    enableVibration(false)
+                    setShowBadge(false)
+                }
+            )
         }
     }
 
     private fun canPostToIslandChannel(context: Context): Boolean {
         if (!canPostNotifications(context)) return false
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return true
         val channel = context.getSystemService(NotificationManager::class.java)
             .getNotificationChannel(CHANNEL_ID) ?: return false
         return channel.importance != NotificationManager.IMPORTANCE_NONE
@@ -437,7 +433,7 @@ object IslandOverlayController {
 
     fun ensurePersistent(context: Context) {
         handler.post {
-            if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(context)) return@post
+            if (!Settings.canDrawOverlays(context)) return@post
             createIfNeeded(context.applicationContext)
             setExpanded(false)
         }
@@ -456,7 +452,7 @@ object IslandOverlayController {
         // Refuse replacement if we cannot synchronously attach the overlay; otherwise the
         // original app alert must remain visible as the safe fallback.
         if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) return false
-        if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(context)) return false
+        if (!Settings.canDrawOverlays(context)) return false
 
         createIfNeeded(context.applicationContext)
         if (!attached) return false
