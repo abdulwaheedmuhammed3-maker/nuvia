@@ -456,11 +456,18 @@ object IslandOverlayController {
         messageView?.text = message
         if (!setExpanded(true)) return false
 
+        scheduleCollapse(context)
+        return true
+    }
+
+    private fun scheduleCollapse(context: Context) {
         collapseTask?.let(handler::removeCallbacks)
-        collapseTask = Runnable { setExpanded(false) }.also {
+        collapseTask = Runnable {
+            setExpanded(false)
+            collapseTask = null
+        }.also {
             handler.postDelayed(it, NuviaStore.islandDisplayDurationSeconds(context).toLong() * 1_000L)
         }
-        return true
     }
 
     private fun createIfNeeded(context: Context) {
@@ -481,12 +488,16 @@ object IslandOverlayController {
             elevation = dp(10).toFloat()
             isClickable = true
             setOnClickListener {
-                val intent = currentIntent
-                if (expanded && intent != null) {
-                    runCatching { intent.send() }
+                if (expanded) {
+                    currentIntent?.let { intent -> runCatching { intent.send() } }
+                    collapseTask?.let(handler::removeCallbacks)
+                    collapseTask = null
                     setExpanded(false)
                 } else {
-                    setExpanded(!expanded)
+                    val hasPreview = !titleView?.text.isNullOrBlank() || !messageView?.text.isNullOrBlank()
+                    if (hasPreview && setExpanded(true)) {
+                        scheduleCollapse(context)
+                    }
                 }
             }
         }
