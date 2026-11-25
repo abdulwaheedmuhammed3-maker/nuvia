@@ -1,0 +1,568 @@
+package com.nuvia.app.notifications
+
+import android.Manifest
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.PixelFormat
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import android.provider.Settings
+import android.service.notification.StatusBarNotification
+import android.view.Gravity
+import android.view.View
+import android.view.WindowManager
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toBitmap
+import com.nuvia.app.R
+import com.nuvia.app.data.NuviaStore
+import io.github.d4viddf.hyperisland_kit.HyperIslandNotification
+import io.github.d4viddf.hyperisland_kit.HyperPicture
+import io.github.d4viddf.hyperisland_kit.models.ImageTextInfoLeft
+import io.github.d4viddf.hyperisland_kit.models.ImageTextInfoRight
+import io.github.d4viddf.hyperisland_kit.models.PicInfo
+import io.github.d4viddf.hyperisland_kit.models.TextInfo
+import java.util.concurrent.ConcurrentHashMap
+
+/**
+ * Uses Xiaomi's native Focus Notification/HyperIsland protocol when the device supports it.
+ * Other Android devices use a centred persistent overlay as a fallback.
+ */
+object NuviaHyperIslandController {
+    private const val CHANNEL_ID = "nuvia_hyper_island_v1"
+    private const val PERMANENT_ID = 9999
+    private val activeIds = ConcurrentHashMap<String, Int>()
+
+    fun isXiaomiDevice(): Boolean {
+        val manufacturer = Build.MANUFACTURER.lowercase()
+        return manufacturer.contains("xiaomi") || manufacturer.contains("redmi") ||
+            manufacturer.contains("poco")
+    }
+
+    fun isNativeReady(context: Context): Boolean {
+        val app = context.applicationContext
+        if (!isPostPermissionGranted(app)) return false
+        return runCatching {
+            HyperIslandNotification.isSupported(app) && hasFocusNotificationPermission(app)
+        }.getOrDefault(false)
+    }
+
+    private fun isPostPermissionGranted(context: Context): Boolean =
+        Build.VERSION.SDK_INT < 33 ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+
+    private fun hasFocusNotificationPermission(context: Context): Boolean {
+        return try {
+            val args = Bundle().apply { putString("package", context.packageName) }
+            val result = context.contentResolver.call(
+                Uri.parse("content://miui.statusbar.notification.public"),
+                "canShowFocus",
+                null,
+                args
+            )
+            result?.getBoolean("canShowFocus", false) == true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun setEnabled(context: Context, enabled: Boolean) {
+        val app = context.applicationContext
+        NuviaStore.setIslandEnabled(app, enabled)
+        refreshPermanent(app)
+    }
+
+    fun refreshPermanent(context: Context) {
+        val app = context.applicationContext
+        if (!NuviaStore.isIslandEnabled(app)) {
+            cancelAll(app)
+            IslandOverlayController.hide()
+            return
+        }
+
+        if (isNativeReady(app)) {
+            IslandOverlayController.hide()
+            ensureChannel(app)
+            postPermanentIsland(app)
+        } else {
+            NotificationManagerCompat.from(app).cancel(PERMANENT_ID)
+            if (Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(app)) {
+                IslandOverlayController.ensurePersistent(app)
+            } else {
+                IslandOverlayController.hide()
+            }
+        }
+    }
+
+    fun showNotification(
+        context: Context,
+        sbn: StatusBarNotification,
+        appName: String,
+        title: String,
+        message: String
+    ) {
+        val app = context.applicationContext
+        if (!NuviaStore.isIslandEnabled(app)) return
+
+        if (isNativeReady(app)) {
+            IslandOverlayController.hide()
+            postNativeNotification(
+                context = app,
+                key = sbn.key,
+                packageName = sbn.packageName,
+                appName = appName,
+                title = title,
+                message = message,
+                contentIntent = sbn.notification.contentIntent
+            )
+        } else if (Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(app)) {
+            val icon = runCatching { app.packageManager.getApplicationIcon(sbn.packageName) }.getOrNull()
+            IslandOverlayController.showNotification(
+                context = app,
+                appName = appName,
+                title = title,
+                message = message,
+                appIcon = icon,
+                contentIntent = sbn.notification.contentIntent
+            )
+        }
+    }
+
+    fun showTest(context: Context, packageName: String?) {
+        val app = context.applicationContext
+        if (packageName.isNullOrBlank()) return
+        val pm = app.packageManager
+        val label = runCatching {
+            pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
+        }.getOrDefault("Selected app")
+        val launchIntent = pm.getLaunchIntentForPackage(packageName)
+        val pendingIntent = launchIntent?.let {
+            PendingIntent.getActivity(
+                app,
+                packageName.hashCode(),
+                it,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
+        val icon = runCatching { pm.getApplicationIcon(packageName) }.getOrNull()
+        if (isNativeReady(app)) {
+            IslandOverlayController.hide()
+            postNativeNotification(
+                context = app,
+                key = "nuvia-test:$packageName",
+                packageName = packageName,
+                appName = label,
+                title = "Island preview",
+                message = "This preview uses the selected app's own icon.",
+                contentIntent = pendingIntent
+            )
+        } else {
+            IslandOverlayController.showNotification(
+                context = app,
+                appName = label,
+                title = "Island preview",
+                message = "This preview uses the selected app's own icon.",
+                appIcon = icon,
+                contentIntent = pendingIntent
+            )
+        }
+    }
+
+    fun dismiss(context: Context, key: String) {
+        val id = activeIds.remove(key) ?: return
+        runCatching { NotificationManagerCompat.from(context).cancel(id) }
+    }
+
+    private fun cancelAll(context: Context) {
+        activeIds.values.toSet().forEach { id ->
+            runCatching { NotificationManagerCompat.from(context).cancel(id) }
+        }
+        activeIds.clear()
+        NotificationManagerCompat.from(context).cancel(PERMANENT_ID)
+    }
+
+    private fun ensureChannel(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = context.getSystemService(NotificationManager::class.java)
+            if (manager.getNotificationChannel(CHANNEL_ID) == null) {
+                manager.createNotificationChannel(
+                    NotificationChannel(
+                        CHANNEL_ID,
+                        "Nuvia HyperIsland",
+                        NotificationManager.IMPORTANCE_HIGH
+                    ).apply {
+                        description = "Silent notifications used to render Nuvia's HyperOS island"
+                        setSound(null, null)
+                        enableVibration(false)
+                        setShowBadge(false)
+                    }
+                )
+            }
+        }
+    }
+
+    private fun postPermanentIsland(context: Context) {
+        runCatching {
+            val builder = HyperIslandNotification.Builder(context, "nuvia_permanent", "Nuvia")
+            builder.setEnableFloat(false)
+            builder.setIslandConfig(
+                timeout = 86_400_000,
+                dismissible = false,
+                highlightColor = "#FFFFFF",
+                expandedTimeMs = 0
+            )
+            builder.setShowNotification(false)
+            builder.setReopen(true)
+            builder.setIslandFirstFloat(false)
+
+            val blank = "\u00A0".repeat(4)
+            builder.setBigIslandInfo(
+                left = ImageTextInfoLeft(1, null, TextInfo(blank, blank)),
+                right = null
+            )
+            builder.setSmallIsland("")
+
+            val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_nuvia_stat)
+                .setContentTitle("Nuvia")
+                .setContentText("Permanent island")
+                .setPriority(NotificationCompat.PRIORITY_MIN)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .addExtras(builder.buildResourceBundle())
+                .build()
+            notification.extras.putString("miui.focus.param", builder.buildJsonParam())
+            NotificationManagerCompat.from(context).notify(PERMANENT_ID, notification)
+        }
+    }
+
+    private fun postNativeNotification(
+        context: Context,
+        key: String,
+        packageName: String,
+        appName: String,
+        title: String,
+        message: String,
+        contentIntent: PendingIntent?
+    ) {
+        ensureChannel(context)
+        val id = (key.hashCode() and 0x7fffffff).let {
+            when (it) {
+                0 -> 10000
+                PERMANENT_ID -> 10001
+                else -> it
+            }
+        }
+        activeIds[key] = id
+
+        runCatching {
+            val icon = context.packageManager.getApplicationIcon(packageName)
+            val iconBitmap = drawableBitmap(icon)
+            val picKey = "nuvia_app_icon"
+            val hiddenKey = "nuvia_transparent"
+            val builder = HyperIslandNotification.Builder(context, "nuvia_$packageName", appName)
+            builder.setEnableFloat(true)
+            builder.setIslandConfig(
+                timeout = 60_000,
+                dismissible = true,
+                highlightColor = "#FFFFFF",
+                expandedTimeMs = 5_000
+            )
+            builder.setShowNotification(false)
+            builder.setReopen(true)
+            builder.setIslandFirstFloat(true)
+            builder.addPicture(HyperPicture(picKey, iconBitmap))
+            builder.addPicture(HyperPicture(hiddenKey, Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)))
+            builder.setBaseInfo(type = 2, title = title.ifBlank { appName }, content = message)
+            builder.setIconTextInfo(picKey = picKey, title = title.ifBlank { appName }, content = message)
+            builder.setBigIslandInfo(
+                left = ImageTextInfoLeft(1, PicInfo(1, picKey), TextInfo("", "")),
+                right = ImageTextInfoRight(
+                    1,
+                    PicInfo(1, hiddenKey),
+                    TextInfo(title.ifBlank { appName }, message)
+                )
+            )
+            builder.setSmallIsland(picKey)
+
+            val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_nuvia_stat)
+                .setContentTitle(title.ifBlank { appName })
+                .setContentText(message)
+                .setContentIntent(contentIntent)
+                .setCategory(Notification.CATEGORY_MESSAGE)
+                .setAutoCancel(true)
+                .setOnlyAlertOnce(true)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .addExtras(builder.buildResourceBundle())
+                .build()
+            notification.extras.putString("miui.focus.param", builder.buildJsonParam())
+            NotificationManagerCompat.from(context).notify(id, notification)
+        }
+    }
+
+    private fun drawableBitmap(drawable: Drawable): Bitmap {
+        return runCatching { drawable.toBitmap(width = 96, height = 96) }.getOrElse {
+            val bitmap = Bitmap.createBitmap(96, 96, Bitmap.Config.ARGB_8888)
+            drawable.setBounds(0, 0, bitmap.width, bitmap.height)
+            drawable.draw(Canvas(bitmap))
+            bitmap
+        }
+    }
+}
+
+/**
+ * Non-Xiaomi fallback. The capsule stays visible and centred; notification cards expand
+ * from it briefly, then collapse back to the persistent capsule instead of disappearing.
+ */
+object IslandOverlayController {
+    private const val COLLAPSED_WIDTH_DP = 116
+    private const val COLLAPSED_HEIGHT_DP = 36
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var windowManager: WindowManager? = null
+    private var root: LinearLayout? = null
+    private var iconView: ImageView? = null
+    private var details: LinearLayout? = null
+    private var appView: TextView? = null
+    private var titleView: TextView? = null
+    private var messageView: TextView? = null
+    private var closeView: TextView? = null
+    private var params: WindowManager.LayoutParams? = null
+    private var attached = false
+    private var expanded = false
+    private var currentIntent: PendingIntent? = null
+    private var collapseTask: Runnable? = null
+    private var appContext: Context? = null
+
+    fun ensurePersistent(context: Context) {
+        handler.post {
+            if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(context)) return@post
+            createIfNeeded(context.applicationContext)
+            setExpanded(false)
+        }
+    }
+
+    fun showNotification(
+        context: Context,
+        appName: String,
+        title: String,
+        message: String,
+        appIcon: Drawable?,
+        contentIntent: PendingIntent?
+    ) {
+        handler.post {
+            if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(context)) return@post
+            createIfNeeded(context.applicationContext)
+            currentIntent = contentIntent
+            iconView?.apply {
+                if (appIcon != null) {
+                    setImageDrawable(appIcon)
+                    visibility = View.VISIBLE
+                } else {
+                    visibility = View.INVISIBLE
+                }
+            }
+            appView?.text = appName
+            titleView?.text = title
+            messageView?.text = message
+            setExpanded(true)
+            collapseTask?.let(handler::removeCallbacks)
+            collapseTask = Runnable { setExpanded(false) }.also { handler.postDelayed(it, 5_500L) }
+        }
+    }
+
+    private fun createIfNeeded(context: Context) {
+        if (root != null && attached) return
+        appContext = context
+        val density = context.resources.displayMetrics.density
+        fun dp(value: Int) = (value * density).toInt()
+
+        val container = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(6), dp(5), dp(6), dp(5))
+            background = GradientDrawable().apply {
+                setColor(Color.BLACK)
+                cornerRadius = dp(28).toFloat()
+                setStroke(dp(1), Color.rgb(34, 37, 44))
+            }
+            elevation = dp(10).toFloat()
+            isClickable = true
+            setOnClickListener {
+                val intent = currentIntent
+                if (expanded && intent != null) {
+                    runCatching { intent.send() }
+                    setExpanded(false)
+                } else {
+                    setExpanded(!expanded)
+                }
+            }
+        }
+
+        val header = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val icon = ImageView(context).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            visibility = View.INVISIBLE
+        }
+        header.addView(icon, LinearLayout.LayoutParams(dp(24), dp(24)))
+
+        val detail = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+            visibility = View.GONE
+        }
+        val app = TextView(context).apply {
+            textSize = 9f
+            setTextColor(Color.rgb(172, 178, 190))
+            maxLines = 1
+        }
+        val title = TextView(context).apply {
+            textSize = 13f
+            setTextColor(Color.WHITE)
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        }
+        detail.addView(app)
+        detail.addView(title)
+        header.addView(detail, LinearLayout.LayoutParams(0, dp(38), 1f))
+
+        val close = TextView(context).apply {
+            text = "×"
+            textSize = 20f
+            setTextColor(Color.rgb(160, 167, 180))
+            gravity = Gravity.CENTER
+            visibility = View.GONE
+            setOnClickListener { setExpanded(false) }
+        }
+        header.addView(close, LinearLayout.LayoutParams(dp(24), dp(28)))
+        container.addView(header)
+
+        val message = TextView(context).apply {
+            textSize = 11f
+            setTextColor(Color.rgb(196, 202, 214))
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            visibility = View.GONE
+            setPadding(dp(36), dp(4), dp(8), dp(2))
+        }
+        container.addView(message)
+
+        root = container
+        iconView = icon
+        details = detail
+        appView = app
+        titleView = title
+        messageView = message
+        closeView = close
+
+        val screenWidth = if (Build.VERSION.SDK_INT >= 30) {
+            context.getSystemService(WindowManager::class.java).currentWindowMetrics.bounds.width()
+        } else context.resources.displayMetrics.widthPixels
+        val collapsedWidth = dp(COLLAPSED_WIDTH_DP)
+        val collapsedHeight = dp(COLLAPSED_HEIGHT_DP)
+        val expandedWidth = (screenWidth - dp(28)).coerceAtMost(dp(360)).coerceAtLeast(dp(250))
+
+        val layout = WindowManager.LayoutParams(
+            collapsedWidth,
+            collapsedHeight,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            y = dp(3)
+            if (Build.VERSION.SDK_INT >= 28) {
+                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+        }
+        params = layout
+        windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        try {
+            windowManager?.addView(container, layout)
+            attached = true
+        } catch (_: Exception) {
+            attached = false
+        }
+    }
+
+    private fun setExpanded(value: Boolean) {
+        val view = root ?: return
+        val wm = windowManager ?: return
+        val layout = params ?: return
+        val context = appContext ?: return
+        expanded = value
+        val density = context.resources.displayMetrics.density
+        fun dp(v: Int) = (v * density).toInt()
+
+        if (value) {
+            details?.visibility = View.VISIBLE
+            messageView?.visibility = View.VISIBLE
+            closeView?.visibility = View.VISIBLE
+            view.gravity = Gravity.CENTER_VERTICAL
+            view.setPadding(dp(12), dp(8), dp(10), dp(8))
+            layout.width = (context.resources.displayMetrics.widthPixels - dp(28)).coerceAtMost(dp(360)).coerceAtLeast(dp(250))
+            layout.height = dp(86)
+        } else {
+            details?.visibility = View.GONE
+            messageView?.visibility = View.GONE
+            closeView?.visibility = View.GONE
+            view.gravity = Gravity.CENTER
+            view.setPadding(dp(6), dp(5), dp(6), dp(5))
+            layout.width = dp(COLLAPSED_WIDTH_DP)
+            layout.height = dp(COLLAPSED_HEIGHT_DP)
+        }
+        try {
+            wm.updateViewLayout(view, layout)
+            view.animate().cancel()
+            view.scaleX = 0.94f
+            view.scaleY = 0.94f
+            view.animate().scaleX(1f).scaleY(1f).setDuration(180L).start()
+        } catch (_: Exception) {
+            hide()
+        }
+    }
+
+    fun hide() {
+        handler.post {
+            collapseTask?.let(handler::removeCallbacks)
+            collapseTask = null
+            val view = root
+            root = null
+            attached = false
+            expanded = false
+            iconView = null
+            details = null
+            appView = null
+            titleView = null
+            messageView = null
+            closeView = null
+            params = null
+            currentIntent = null
+            if (view != null) runCatching { windowManager?.removeView(view) }
+            windowManager = null
+            appContext = null
+        }
+    }
+}
