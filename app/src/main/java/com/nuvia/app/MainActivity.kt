@@ -387,13 +387,6 @@ private fun HomeScreen(
 
 @Composable
 private fun IslandPreviewCard() {
-    val transition = rememberInfiniteTransition(label = "island-glow")
-    val glow by transition.animateFloat(
-        initialValue = 0.22f,
-        targetValue = 0.72f,
-        animationSpec = infiniteRepeatable(tween(1900, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "glow"
-    )
     Card(
         shape = RoundedCornerShape(27.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceOne),
@@ -410,56 +403,37 @@ private fun IslandPreviewCard() {
                     .fillMaxWidth()
                     .height(174.dp)
                     .clip(RoundedCornerShape(21.dp))
-                    .background(Brush.linearGradient(listOf(Color(0xFF1B2540), Color(0xFF101725), Color(0xFF211A3B)))),
-                contentAlignment = Alignment.Center
+                    .background(Brush.linearGradient(listOf(Color(0xFF1B2540), Color(0xFF101725), Color(0xFF211A3B))))
             ) {
-                Box(
-                    Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 13.dp)
-                        .width(143.dp)
-                        .height(35.dp)
-                        .alpha(glow)
-                        .clip(CircleShape)
-                        .background(Violet.copy(alpha = 0.18f))
-                )
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 11.dp)
-                        .width(134.dp)
-                        .height(34.dp)
-                        .clip(CircleShape)
-                        .background(Color.Black)
-                        .border(1.dp, Color(0xFF34384A), CircleShape)
-                        .padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(Modifier.size(7.dp).clip(CircleShape).background(Teal))
-                    Spacer(Modifier.weight(1f))
-                    Text("NUVIA", color = Color(0xFFB8C0D2), fontSize = 8.sp, letterSpacing = 1.5.sp, fontWeight = FontWeight.Bold)
-                }
                 Column(
                     modifier = Modifier
-                        .padding(horizontal = 16.dp)
-                        .align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                        .align(Alignment.TopCenter)
+                        .padding(top = 13.dp)
+                        .fillMaxWidth(0.94f)
+                        .clip(RoundedCornerShape(30.dp))
+                        .background(Color(0xFF0D1019))
+                        .border(1.dp, Color(0xFF34384A), RoundedCornerShape(30.dp))
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
-                    Text("One little island.", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                    Text("Every app, in sync.", color = Color(0xFFB8C0D2), fontSize = 12.sp)
-                }
-                Row(
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 13.dp),
-                    horizontalArrangement = Arrangement.spacedBy(5.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    repeat(3) { index ->
-                        Box(Modifier.size(if (index == 0) 5.dp else 4.dp).clip(CircleShape).background(if (index == 0) Teal else Color(0xFF67738C)))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(7.dp).clip(CircleShape).background(Teal))
+                        Spacer(Modifier.width(8.dp))
+                        Text("SNAPCHAT", color = Color(0xFFB8C0D2), fontSize = 9.sp, letterSpacing = 1.4.sp, fontWeight = FontWeight.Medium)
+                        Spacer(Modifier.weight(1f))
+                        Text("NOW", color = Color(0xFF9099AB), fontSize = 9.sp, letterSpacing = 0.8.sp)
                     }
+                    Text("Eragbai Juliet", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    Text("replied to your Chat", color = Color(0xFFB8C0D2), fontSize = 12.sp, maxLines = 1)
                 }
+                Text(
+                    "Notification preview",
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 15.dp),
+                    color = Color(0xFFB8C0D2),
+                    fontSize = 11.sp
+                )
             }
-            Text("A live preview of the compact notification experience.", color = Muted, fontSize = 11.sp)
+            Text("The source app's notification expands from the persistent island.", color = Muted, fontSize = 11.sp)
         }
     }
 }
