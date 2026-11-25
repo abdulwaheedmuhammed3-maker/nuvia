@@ -3,6 +3,11 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+val releaseStorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
+val releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+
 android {
     namespace = "com.nuvia.app"
     compileSdk = 37
@@ -11,10 +16,28 @@ android {
         applicationId = "com.nuvia.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.1.3"
+        versionCode = 4
+        versionName = "0.1.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            if (!releaseKeystorePath.isNullOrBlank()) {
+                storeFile = file(releaseKeystorePath)
+            }
+            storePassword = releaseStorePassword
+            keyAlias = releaseKeyAlias
+            keyPassword = releaseKeyPassword
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+        }
     }
 
     buildFeatures {
@@ -50,7 +73,7 @@ dependencies {
     implementation("androidx.compose.animation:animation")
 
     implementation("androidx.appcompat:appcompat:1.8.0")
-    implementation("io.github.d4viddf:hyperisland_kit:0.4.4")
+    implementation("io.github.d4viddf:hyperisland_kit:0.4.5")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
