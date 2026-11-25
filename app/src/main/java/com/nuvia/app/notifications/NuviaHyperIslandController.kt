@@ -400,7 +400,7 @@ object IslandOverlayController {
             gravity = Gravity.CENTER
             setPadding(dp(6), dp(5), dp(6), dp(5))
             background = GradientDrawable().apply {
-                setColor(Color.BLACK)
+                setColor(Color.rgb(13, 16, 25))
                 cornerRadius = dp(28).toFloat()
                 setStroke(dp(1), Color.rgb(34, 37, 44))
             }
@@ -557,7 +557,7 @@ object IslandOverlayController {
             view.gravity = Gravity.CENTER_VERTICAL
             view.setPadding(dp(12), dp(8), dp(10), dp(8))
             layout.width = (context.resources.displayMetrics.widthPixels - dp(28)).coerceAtMost(dp(380)).coerceAtLeast(dp(250))
-            layout.height = dp(96)
+            layout.height = dp(82)
         } else {
             details?.visibility = View.GONE
             messageView?.visibility = View.GONE
