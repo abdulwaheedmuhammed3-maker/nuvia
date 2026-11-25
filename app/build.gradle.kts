@@ -50,6 +50,7 @@ dependencies {
     implementation("androidx.compose.animation:animation")
 
     implementation("androidx.appcompat:appcompat:1.8.0")
+    implementation("io.github.d4viddf:hyperisland_kit:0.4.4")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
