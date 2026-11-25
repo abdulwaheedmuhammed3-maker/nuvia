@@ -2,10 +2,9 @@ package com.nuvia.app.updates
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
-import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -204,7 +203,7 @@ object NuviaUpdateManager {
         if (!context.packageManager.canRequestPackageInstalls()) {
             val permissionIntent = Intent(
                 Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                Uri.parse("package:${context.packageName}")
+                "package:${context.packageName}".toUri()
             ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(permissionIntent)
             return InstallerResult.PERMISSION_REQUIRED

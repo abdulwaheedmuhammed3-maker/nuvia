@@ -38,6 +38,7 @@ import io.github.d4viddf.hyperisland_kit.models.ImageTextInfoLeft
 import io.github.d4viddf.hyperisland_kit.models.ImageTextInfoRight
 import io.github.d4viddf.hyperisland_kit.models.PicInfo
 import io.github.d4viddf.hyperisland_kit.models.TextInfo
+import java.lang.ref.WeakReference
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -413,17 +414,20 @@ internal fun shouldClearNuviaNotification(tag: String?, isNativeIslandCard: Bool
 object IslandOverlayController {
     private const val COLLAPSED_WIDTH_DP = 116
     private const val COLLAPSED_HEIGHT_DP = 36
+    private const val TAG_ICON = "nuvia_island_icon"
+    private const val TAG_DETAILS = "nuvia_island_details"
+    private const val TAG_APP = "nuvia_island_app"
+    private const val TAG_TITLE = "nuvia_island_title"
+    private const val TAG_TIME = "nuvia_island_time"
+    private const val TAG_DOT = "nuvia_island_dot"
+    private const val TAG_MESSAGE = "nuvia_island_message"
+    private const val TAG_CLOSE = "nuvia_island_close"
+
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
     private var windowManager: WindowManager? = null
-    private var root: LinearLayout? = null
-    private var iconView: ImageView? = null
-    private var details: LinearLayout? = null
-    private var appView: TextView? = null
-    private var timeView: TextView? = null
-    private var dotView: View? = null
-    private var titleView: TextView? = null
-    private var messageView: TextView? = null
-    private var closeView: TextView? = null
+    // WindowManager owns an attached root view. Keep a weak reference so a detached
+    // overlay cannot keep its view hierarchy (and the view Context) alive in this singleton.
+    private var rootReference: WeakReference<LinearLayout>? = null
     private var params: WindowManager.LayoutParams? = null
     private var attached = false
     private var expanded = false
@@ -431,6 +435,11 @@ object IslandOverlayController {
     private var currentKey: String? = null
     private var collapseTask: Runnable? = null
     private var appContext: Context? = null
+
+    private fun rootView(): LinearLayout? = rootReference?.get()
+
+    private inline fun <reified T : View> findView(tag: String): T? =
+        rootView()?.findViewWithTag(tag)
 
     fun ensurePersistent(context: Context) {
         handler.post {
@@ -460,7 +469,7 @@ object IslandOverlayController {
 
         currentKey = key
         currentIntent = contentIntent
-        iconView?.apply {
+        findView<ImageView>(TAG_ICON)?.apply {
             if (appIcon != null) {
                 setImageDrawable(appIcon)
                 visibility = View.VISIBLE
@@ -468,9 +477,9 @@ object IslandOverlayController {
                 visibility = View.INVISIBLE
             }
         }
-        appView?.text = appName.uppercase()
-        titleView?.text = title
-        messageView?.text = message
+        findView<TextView>(TAG_APP)?.text = appName.uppercase()
+        findView<TextView>(TAG_TITLE)?.text = title
+        findView<TextView>(TAG_MESSAGE)?.text = message
         if (!setExpanded(true)) return false
 
         scheduleCollapse(context)
@@ -488,7 +497,7 @@ object IslandOverlayController {
     }
 
     private fun createIfNeeded(context: Context) {
-        if (root != null && attached) return
+        if (rootView() != null && attached) return
         appContext = context
         val density = context.resources.displayMetrics.density
         fun dp(value: Int) = (value * density).toInt()
@@ -511,7 +520,8 @@ object IslandOverlayController {
                     collapseTask = null
                     setExpanded(false)
                 } else {
-                    val hasPreview = !titleView?.text.isNullOrBlank() || !messageView?.text.isNullOrBlank()
+                    val hasPreview = !findView<TextView>(TAG_TITLE)?.text.isNullOrBlank() ||
+                        !findView<TextView>(TAG_MESSAGE)?.text.isNullOrBlank()
                     if (hasPreview && setExpanded(true)) {
                         scheduleCollapse(context)
                     }
@@ -524,12 +534,14 @@ object IslandOverlayController {
             gravity = Gravity.CENTER_VERTICAL
         }
         val icon = ImageView(context).apply {
+            tag = TAG_ICON
             scaleType = ImageView.ScaleType.CENTER_CROP
             visibility = View.INVISIBLE
         }
         header.addView(icon, LinearLayout.LayoutParams(dp(24), dp(24)))
 
         val dot = View(context).apply {
+            tag = TAG_DOT
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 setColor(Color.rgb(45, 212, 191))
@@ -542,17 +554,20 @@ object IslandOverlayController {
         })
 
         val detail = LinearLayout(context).apply {
+            tag = TAG_DETAILS
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
             visibility = View.GONE
         }
         val app = TextView(context).apply {
+            tag = TAG_APP
             textSize = 9f
             letterSpacing = 0.12f
             setTextColor(Color.rgb(172, 178, 190))
             maxLines = 1
         }
         val title = TextView(context).apply {
+            tag = TAG_TITLE
             textSize = 15f
             setTextColor(Color.WHITE)
             maxLines = 1
@@ -564,7 +579,8 @@ object IslandOverlayController {
         header.addView(detail, LinearLayout.LayoutParams(0, dp(40), 1f))
 
         val time = TextView(context).apply {
-            text = "NOW"
+            tag = TAG_TIME
+            text = context.getString(R.string.island_time_now)
             textSize = 9f
             letterSpacing = 0.08f
             setTextColor(Color.rgb(151, 160, 177))
@@ -574,6 +590,7 @@ object IslandOverlayController {
         header.addView(time, LinearLayout.LayoutParams(dp(42), dp(30)))
 
         val close = TextView(context).apply {
+            tag = TAG_CLOSE
             text = "×"
             textSize = 20f
             setTextColor(Color.rgb(160, 167, 180))
@@ -585,6 +602,7 @@ object IslandOverlayController {
         container.addView(header)
 
         val message = TextView(context).apply {
+            tag = TAG_MESSAGE
             textSize = 12f
             setTextColor(Color.rgb(196, 202, 214))
             maxLines = 2
@@ -594,23 +612,19 @@ object IslandOverlayController {
         }
         container.addView(message)
 
-        root = container
-        iconView = icon
-        details = detail
-        appView = app
-        titleView = title
-        messageView = message
-        timeView = time
-        dotView = dot
-        closeView = close
+        rootReference = WeakReference(container)
 
         val collapsedWidth = dp(COLLAPSED_WIDTH_DP)
         val collapsedHeight = dp(COLLAPSED_HEIGHT_DP)
-
-        val statusBarResource = context.resources.getIdentifier("status_bar_height", "dimen", "android")
-        val statusBarHeight = if (statusBarResource > 0) {
-            context.resources.getDimensionPixelSize(statusBarResource)
-        } else dp(24)
+        val manager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        // Public window insets replace the private status_bar_height resource. On
+        // pre-Android 11 devices, retain a conservative 24dp offset.
+        val statusBarHeight = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            manager.currentWindowMetrics.windowInsets
+                .getInsets(android.view.WindowInsets.Type.statusBars()).top
+        } else {
+            dp(24)
+        }
 
         val layout = WindowManager.LayoutParams(
             collapsedWidth,
@@ -628,7 +642,7 @@ object IslandOverlayController {
             }
         }
         params = layout
-        windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        windowManager = manager
         try {
             windowManager?.addView(container, layout)
             attached = true
@@ -638,7 +652,7 @@ object IslandOverlayController {
     }
 
     private fun setExpanded(value: Boolean): Boolean {
-        val view = root ?: return false
+        val view = rootView() ?: return false
         val wm = windowManager ?: return false
         val layout = params ?: return false
         val context = appContext ?: return false
@@ -646,24 +660,31 @@ object IslandOverlayController {
         val density = context.resources.displayMetrics.density
         fun dp(v: Int) = (v * density).toInt()
 
+        val detailView = findView<LinearLayout>(TAG_DETAILS)
+        val message = findView<TextView>(TAG_MESSAGE)
+        val close = findView<TextView>(TAG_CLOSE)
+        val dot = findView<View>(TAG_DOT)
+        val time = findView<TextView>(TAG_TIME)
+        val icon = findView<ImageView>(TAG_ICON)
+
         if (value) {
-            details?.visibility = View.VISIBLE
-            messageView?.visibility = View.VISIBLE
-            closeView?.visibility = View.GONE
-            dotView?.visibility = View.VISIBLE
-            timeView?.visibility = View.VISIBLE
-            iconView?.visibility = if (iconView?.drawable != null) View.VISIBLE else View.INVISIBLE
+            detailView?.visibility = View.VISIBLE
+            message?.visibility = View.VISIBLE
+            close?.visibility = View.GONE
+            dot?.visibility = View.VISIBLE
+            time?.visibility = View.VISIBLE
+            icon?.visibility = if (icon?.drawable != null) View.VISIBLE else View.INVISIBLE
             view.gravity = Gravity.CENTER_VERTICAL
             view.setPadding(dp(12), dp(8), dp(10), dp(8))
             layout.width = (context.resources.displayMetrics.widthPixels * 0.80f).toInt().coerceAtMost(dp(380)).coerceAtLeast(dp(280))
             layout.height = dp(92)
         } else {
-            details?.visibility = View.GONE
-            messageView?.visibility = View.GONE
-            closeView?.visibility = View.GONE
-            dotView?.visibility = View.GONE
-            timeView?.visibility = View.GONE
-            iconView?.visibility = View.INVISIBLE
+            detailView?.visibility = View.GONE
+            message?.visibility = View.GONE
+            close?.visibility = View.GONE
+            dot?.visibility = View.GONE
+            time?.visibility = View.GONE
+            icon?.visibility = View.INVISIBLE
             view.gravity = Gravity.CENTER
             view.setPadding(dp(6), dp(5), dp(6), dp(5))
             layout.width = dp(COLLAPSED_WIDTH_DP)
@@ -698,10 +719,10 @@ object IslandOverlayController {
         collapseTask = null
         currentKey = null
         currentIntent = null
-        iconView?.setImageDrawable(null)
-        appView?.text = ""
-        titleView?.text = ""
-        messageView?.text = ""
+        findView<ImageView>(TAG_ICON)?.setImageDrawable(null)
+        findView<TextView>(TAG_APP)?.text = ""
+        findView<TextView>(TAG_TITLE)?.text = ""
+        findView<TextView>(TAG_MESSAGE)?.text = ""
         if (attached) setExpanded(false)
     }
 
@@ -709,18 +730,10 @@ object IslandOverlayController {
         handler.post {
             collapseTask?.let(handler::removeCallbacks)
             collapseTask = null
-            val view = root
-            root = null
+            val view = rootView()
+            rootReference = null
             attached = false
             expanded = false
-            iconView = null
-            details = null
-            appView = null
-            titleView = null
-            messageView = null
-            closeView = null
-            timeView = null
-            dotView = null
             params = null
             currentIntent = null
             currentKey = null
