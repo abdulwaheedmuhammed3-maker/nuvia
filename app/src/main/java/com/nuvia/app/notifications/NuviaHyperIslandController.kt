@@ -166,6 +166,7 @@ object NuviaHyperIslandController {
             val icon = runCatching { app.packageManager.getApplicationIcon(sbn.packageName) }.getOrNull()
             return IslandOverlayController.showNotification(
                 context = app,
+                key = sbn.key,
                 appName = appName,
                 title = title,
                 message = message,
@@ -207,6 +208,7 @@ object NuviaHyperIslandController {
         } else {
             IslandOverlayController.showNotification(
                 context = app,
+                key = "nuvia-test:$packageName",
                 appName = label,
                 title = "Island preview",
                 message = "This preview uses the selected app's own icon.",
@@ -217,9 +219,13 @@ object NuviaHyperIslandController {
     }
 
     fun dismiss(context: Context, key: String) {
-        val id = activeIds.remove(key) ?: return
-        activeKeysById.remove(id, key)
-        runCatching { NotificationManagerCompat.from(context).cancel(id) }
+        val id = activeIds.remove(key)
+        if (id != null) {
+            activeKeysById.remove(id, key)
+            runCatching { NotificationManagerCompat.from(context).cancel(id) }
+        }
+        // The non-Xiaomi overlay also tracks its currently displayed source notification.
+        IslandOverlayController.dismissNotification(key)
     }
 
     fun clearActiveNotifications(context: Context) {
@@ -414,6 +420,7 @@ object IslandOverlayController {
     private var attached = false
     private var expanded = false
     private var currentIntent: PendingIntent? = null
+    private var currentKey: String? = null
     private var collapseTask: Runnable? = null
     private var appContext: Context? = null
 
@@ -427,6 +434,7 @@ object IslandOverlayController {
 
     fun showNotification(
         context: Context,
+        key: String,
         appName: String,
         title: String,
         message: String,
@@ -442,6 +450,7 @@ object IslandOverlayController {
         createIfNeeded(context.applicationContext)
         if (!attached) return false
 
+        currentKey = key
         currentIntent = contentIntent
         iconView?.apply {
             if (appIcon != null) {
@@ -665,15 +674,27 @@ object IslandOverlayController {
         }
     }
 
-    fun clearNotification() {
+    fun dismissNotification(key: String) {
         handler.post {
-            collapseTask?.let(handler::removeCallbacks)
-            collapseTask = null
-            currentIntent = null
-            titleView?.text = ""
-            messageView?.text = ""
-            if (attached) setExpanded(false)
+            if (currentKey != key) return@post
+            clearPreview()
         }
+    }
+
+    fun clearNotification() {
+        handler.post { clearPreview() }
+    }
+
+    private fun clearPreview() {
+        collapseTask?.let(handler::removeCallbacks)
+        collapseTask = null
+        currentKey = null
+        currentIntent = null
+        iconView?.setImageDrawable(null)
+        appView?.text = ""
+        titleView?.text = ""
+        messageView?.text = ""
+        if (attached) setExpanded(false)
     }
 
     fun hide() {
@@ -694,6 +715,7 @@ object IslandOverlayController {
             dotView = null
             params = null
             currentIntent = null
+            currentKey = null
             if (view != null) runCatching { windowManager?.removeView(view) }
             windowManager = null
             appContext = null
