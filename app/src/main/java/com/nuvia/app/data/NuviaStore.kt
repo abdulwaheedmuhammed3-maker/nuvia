@@ -2,6 +2,7 @@ package com.nuvia.app.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -48,7 +49,7 @@ object NuviaStore {
                 put("hasActions", item.hasActions)
             })
         }
-        prefs(context).edit().putString(RECORDS, json.toString()).apply()
+        prefs(context).edit { putString(RECORDS, json.toString()) }
     }
 
     fun getNotifications(context: Context): List<NotificationRecord> {
@@ -77,36 +78,34 @@ object NuviaStore {
     }
 
     fun clearNotifications(context: Context) {
-        prefs(context).edit().remove(RECORDS).apply()
+        prefs(context).edit { remove(RECORDS) }
     }
 
     fun isReplacementEnabled(context: Context): Boolean =
         prefs(context).getBoolean(REPLACE_ORIGINALS, false)
 
     fun setReplacementEnabled(context: Context, enabled: Boolean) {
-        prefs(context).edit().putBoolean(REPLACE_ORIGINALS, enabled).apply()
+        prefs(context).edit { putBoolean(REPLACE_ORIGINALS, enabled) }
     }
 
     fun isIslandEnabled(context: Context): Boolean =
         prefs(context).getBoolean(ISLAND_ENABLED, true)
 
     fun setIslandEnabled(context: Context, enabled: Boolean) {
-        prefs(context).edit().putBoolean(ISLAND_ENABLED, enabled).apply()
+        prefs(context).edit { putBoolean(ISLAND_ENABLED, enabled) }
     }
 
     fun islandDisplayDurationSeconds(context: Context): Int =
         prefs(context).getInt(ISLAND_DISPLAY_DURATION_SECONDS, 5).coerceIn(1, 15)
 
     fun setIslandDisplayDurationSeconds(context: Context, seconds: Int) {
-        prefs(context).edit()
-            .putInt(ISLAND_DISPLAY_DURATION_SECONDS, seconds.coerceIn(1, 15))
-            .apply()
+        prefs(context).edit { putInt(ISLAND_DISPLAY_DURATION_SECONDS, seconds.coerceIn(1, 15)) }
     }
     fun isHideContentEnabled(context: Context): Boolean =
         prefs(context).getBoolean(HIDE_CONTENT, false)
 
     fun setHideContentEnabled(context: Context, enabled: Boolean) {
-        prefs(context).edit().putBoolean(HIDE_CONTENT, enabled).apply()
+        prefs(context).edit { putBoolean(HIDE_CONTENT, enabled) }
     }
 
     fun managedPackages(context: Context): Set<String> =
@@ -115,11 +114,11 @@ object NuviaStore {
     fun setPackageManaged(context: Context, packageName: String, enabled: Boolean) {
         val updated = managedPackages(context).toMutableSet()
         if (enabled) updated.add(packageName) else updated.remove(packageName)
-        prefs(context).edit().putStringSet(MANAGED_PACKAGES, updated).apply()
+        prefs(context).edit { putStringSet(MANAGED_PACKAGES, updated) }
     }
 
     fun setAllPackagesManaged(context: Context, packageNames: Collection<String>) {
-        prefs(context).edit().putStringSet(MANAGED_PACKAGES, packageNames.toSet()).apply()
+        prefs(context).edit { putStringSet(MANAGED_PACKAGES, packageNames.toSet()) }
     }
 
     fun isPackageManaged(context: Context, packageName: String): Boolean =
