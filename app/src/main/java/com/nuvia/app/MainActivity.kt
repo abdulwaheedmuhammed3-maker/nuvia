@@ -490,31 +490,36 @@ private fun SetupStep(number: String, title: String, status: String, complete: B
 @Composable
 private fun InboxScreen(notifications: List<NotificationRecord>) {
     val context = LocalContext.current
-    PageColumn {
-        BrandHeader("YOUR PERSONAL NOTIFICATION SPACE")
-        Row(verticalAlignment = Alignment.Bottom) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Inbox", fontSize = 31.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.8).sp)
-                Text("Everything important, gathered in one place.", color = Muted, fontSize = 12.sp)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().background(Midnight).padding(horizontal = 20.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 18.dp, bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+        item { BrandHeader("YOUR PERSONAL NOTIFICATION SPACE") }
+        item {
+            Row(verticalAlignment = Alignment.Bottom) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Inbox", fontSize = 31.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.8).sp)
+                    Text("Everything important, gathered in one place.", color = Muted, fontSize = 12.sp)
+                }
+                Text("${notifications.size} saved", color = Violet, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
             }
-            Text("${notifications.size} saved", color = Violet, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
         }
         if (notifications.isEmpty()) {
-            EmptyState(Icons.Rounded.Inbox, "Nothing here yet", "New notifications will appear here after you grant Nuvia notification access.")
+            item { EmptyState(Icons.Rounded.Inbox, "Nothing here yet", "New notifications will appear here after you grant Nuvia notification access.") }
         } else {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("LATEST", color = Muted, fontSize = 10.sp, letterSpacing = 1.4.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.weight(1f))
-                TextButton(onClick = { NuviaStore.clearNotifications(context) }) {
-                    Icon(Icons.Rounded.DeleteOutline, null, modifier = Modifier.size(15.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Clear", color = Muted, fontSize = 11.sp)
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("LATEST", color = Muted, fontSize = 10.sp, letterSpacing = 1.4.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick = { NuviaStore.clearNotifications(context) }) {
+                        Icon(Icons.Rounded.DeleteOutline, null, modifier = Modifier.size(15.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Clear", color = Muted, fontSize = 11.sp)
+                    }
                 }
             }
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                items(notifications, key = { it.key }) { record -> NotificationRow(record, expanded = true) }
-                item { Spacer(Modifier.height(8.dp)) }
-            }
+            items(notifications, key = { it.key }) { record -> NotificationRow(record, expanded = true) }
         }
     }
 }
@@ -526,68 +531,76 @@ private fun AppsScreen() {
     val context = LocalContext.current
     val apps = remember { getLaunchableApps(context) }
     var query by rememberSaveable { mutableStateOf("") }
-    var selected by remember { mutableStateOf(NuviaStore.managedPackages(context)) }
+    var selected by remember { mutableStateOf(NuviaStore.managedPackages(context).intersect(apps.map { it.packageName }.toSet())) }
     val filtered = apps.filter { it.label.contains(query, ignoreCase = true) || it.packageName.contains(query, ignoreCase = true) }
 
-    PageColumn {
-        BrandHeader("CHOOSE WHAT NUVIA MANAGES")
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Your apps", fontSize = 30.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.8).sp)
-            Text("Choose which apps Nuvia manages. With the island on, their alerts appear in the island and are kept quietly in your shade.", color = Muted, fontSize = 12.sp)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().background(Midnight).padding(horizontal = 20.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 18.dp, bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+        item { BrandHeader("CHOOSE WHAT NUVIA MANAGES") }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Your apps", fontSize = 30.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.8).sp)
+                Text("Choose which apps Nuvia manages. With the island on, their alerts appear in the island and are kept quietly in your shade.", color = Muted, fontSize = 12.sp)
+            }
         }
-        Card(
-            colors = CardDefaults.cardColors(containerColor = SurfaceOne),
-            shape = RoundedCornerShape(18.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Line)
-        ) {
-            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Shield, null, tint = Teal, modifier = Modifier.size(21.dp))
-                Spacer(Modifier.width(10.dp))
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("Safe by default", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    Text("Calls, alarms and ongoing system alerts stay untouched.", fontSize = 10.sp, color = Muted)
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = SurfaceOne),
+                shape = RoundedCornerShape(18.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Line)
+            ) {
+                Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Shield, null, tint = Teal, modifier = Modifier.size(21.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("Safe by default", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Calls, alarms and ongoing system alerts stay untouched.", fontSize = 10.sp, color = Muted)
+                    }
                 }
             }
         }
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Search installed apps", color = Muted) },
-            leadingIcon = { Icon(Icons.Rounded.Search, null, tint = Muted) },
-            singleLine = true,
-            shape = RoundedCornerShape(15.dp)
-        )
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("${selected.size} selected", color = Muted, fontSize = 11.sp)
-            Spacer(Modifier.weight(1f))
-            TextButton(onClick = {
-                selected = if (selected.size == apps.size) emptySet() else apps.map { it.packageName }.toSet()
-                NuviaStore.setAllPackagesManaged(context, selected)
-            }) {
-                Text(if (selected.size == apps.size) "Clear all" else "Select all", color = Violet, fontSize = 12.sp)
+        item {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Search installed apps", color = Muted) },
+                leadingIcon = { Icon(Icons.Rounded.Search, null, tint = Muted) },
+                singleLine = true,
+                shape = RoundedCornerShape(15.dp)
+            )
+        }
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("${selected.size} selected", color = Muted, fontSize = 11.sp)
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = {
+                    selected = if (selected.size == apps.size) emptySet() else apps.map { it.packageName }.toSet()
+                    NuviaStore.setAllPackagesManaged(context, selected)
+                }) {
+                    Text(if (selected.size == apps.size) "Clear all" else "Select all", color = Violet, fontSize = 12.sp)
+                }
             }
         }
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            items(filtered, key = { it.packageName }) { app ->
-                AppSelectionRow(
-                    app = app,
-                    checked = selected.contains(app.packageName),
-                    onCheckedChange = { checked ->
-                        val next = selected.toMutableSet().apply {
-                            if (checked) add(app.packageName) else remove(app.packageName)
-                        }
-                        selected = next
-                        NuviaStore.setPackageManaged(context, app.packageName, checked)
+        items(filtered, key = { it.packageName }) { app ->
+            AppSelectionRow(
+                app = app,
+                checked = selected.contains(app.packageName),
+                onCheckedChange = { checked ->
+                    val next = selected.toMutableSet().apply {
+                        if (checked) add(app.packageName) else remove(app.packageName)
                     }
-                )
-            }
-            item { Spacer(Modifier.height(8.dp)) }
+                    selected = next
+                    NuviaStore.setPackageManaged(context, app.packageName, checked)
+                }
+            )
         }
     }
 }
 
-@Composable
 private fun AppSelectionRow(app: LaunchableApp, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(
         modifier = Modifier
