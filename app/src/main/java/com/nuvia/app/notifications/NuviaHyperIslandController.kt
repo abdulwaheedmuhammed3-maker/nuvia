@@ -74,7 +74,7 @@ object NuviaHyperIslandController {
 
     fun isNativeReady(context: Context): Boolean {
         val app = context.applicationContext
-        if (!canPostNotifications(app)) return false
+        if (!canPostNotifications(app) || !isIslandChannelEnabled(app)) return false
         return runCatching {
             HyperIslandNotification.isSupported(app) && hasFocusNotificationPermission(app)
         }.getOrDefault(false)
@@ -89,6 +89,13 @@ object NuviaHyperIslandController {
         val app = context.applicationContext
         return isPostPermissionGranted(app) &&
             NotificationManagerCompat.from(app).areNotificationsEnabled()
+    }
+
+    private fun isIslandChannelEnabled(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return true
+        val channel = context.getSystemService(NotificationManager::class.java)
+            .getNotificationChannel(CHANNEL_ID) ?: return true
+        return channel.importance != NotificationManager.IMPORTANCE_NONE
     }
 
     private fun hasFocusNotificationPermission(context: Context): Boolean {
