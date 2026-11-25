@@ -104,7 +104,16 @@ class NuviaNotificationListener : NotificationListenerService() {
 
         // Release native-island key mappings when Nuvia's own timed island notification expires.
         if (sbn.packageName == packageName) {
-            if (sbn.tag == null) NuviaHyperIslandController.onNativeNotificationRemoved(sbn.id)
+            if (sbn.tag == null) {
+                if (sbn.id == NATIVE_PERMANENT_ID) {
+                    // The native idle island is configured with a bounded system timeout.
+                    // Reconcile it after Android removes it, but let refreshPermanent honour
+                    // the current island toggle and notification/Focus permissions.
+                    NuviaHyperIslandController.refreshPermanent(this)
+                } else {
+                    NuviaHyperIslandController.onNativeNotificationRemoved(sbn.id)
+                }
+            }
             return
         }
 
@@ -271,6 +280,7 @@ class NuviaNotificationListener : NotificationListenerService() {
 
     companion object {
         private const val CHANNEL_ID = "nuvia_replacements_v2"
+        private const val NATIVE_PERMANENT_ID = 9999
 
         fun canPostQuietCopies(context: Context): Boolean {
             if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return false
