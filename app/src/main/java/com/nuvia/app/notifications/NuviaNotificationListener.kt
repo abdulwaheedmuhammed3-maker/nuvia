@@ -63,12 +63,16 @@ class NuviaNotificationListener : NotificationListenerService() {
         }
 
         val isManagedApp = NuviaStore.isPackageManaged(this, sbn.packageName)
-        val islandEnabled = NuviaStore.isIslandEnabled(this) && isManagedApp
+        val deliveryPlan = planNotificationDelivery(
+            isManagedApp = isManagedApp,
+            islandEnabled = NuviaStore.isIslandEnabled(this),
+            replacementEnabled = NuviaStore.isReplacementEnabled(this),
+            preserveOriginal = preserveOriginal,
+            quietCopyReady = canPostQuietCopies(this)
+        )
 
-        // Native Xiaomi HyperIsland is used when available. Android overlay is only a fallback.
-        // Critical/ongoing notifications stay entirely with their source app. Do not
-        // create a second island alert for a notification we deliberately preserve.
-        val islandShown = if (islandEnabled && !preserveOriginal && canPostQuietCopies(this)) {
+        // The policy never emits an island for unmanaged, critical, or unsafe-to-mirror alerts.
+        val islandShown = if (deliveryPlan.showIsland) {
             NuviaHyperIslandController.showNotification(
                 context = this,
                 sbn = sbn,
@@ -80,17 +84,11 @@ class NuviaNotificationListener : NotificationListenerService() {
             false
         }
 
-        // In island mode, replace the source only after Nuvia confirms that the island alert
-        // was posted. Otherwise leave the original untouched so the notification is not lost.
-        val shouldReplace = ((islandEnabled && islandShown) ||
-            NuviaStore.isReplacementEnabled(this)) && isManagedApp && !preserveOriginal
-
-        // Replacing the source notification remains an independent optional setting.
-        if (shouldReplace) {
+        // In island mode, only replace the source after both the island and its quiet
+        // shade copy have succeeded. Replacement-only mode remains independently available.
+        if (deliveryPlan.shouldPostQuietCopy(islandShown)) {
             val replacementPosted = publishReplacement(sbn, appName, title, message)
-            // If a quiet copy could not be posted, keep the source app alert and remove
-            // the island preview. Otherwise both surfaces could interrupt the user.
-            if (islandShown && !replacementPosted) {
+            if (shouldDismissIslandAfterReplacementFailure(islandShown, replacementPosted)) {
                 NuviaHyperIslandController.dismiss(this, sbn.key)
             }
         }
