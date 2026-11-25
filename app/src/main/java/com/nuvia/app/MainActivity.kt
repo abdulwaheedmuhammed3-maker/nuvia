@@ -85,6 +85,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -101,7 +102,14 @@ import androidx.core.content.ContextCompat
 import com.nuvia.app.data.NotificationRecord
 import com.nuvia.app.data.NuviaStore
 import com.nuvia.app.notifications.NuviaHyperIslandController
+import com.nuvia.app.updates.InstallerResult
+import com.nuvia.app.updates.NuviaRelease
+import com.nuvia.app.updates.NuviaUpdateManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -598,6 +606,37 @@ private fun SettingsScreen(
     onRefreshPermissions: () -> Unit
 ) {
     val context = LocalContext.current
+    var updateRelease by remember { mutableStateOf<NuviaRelease?>(null) }
+    var downloadedApk by remember { mutableStateOf<File?>(null) }
+    var updateStatus by remember { mutableStateOf("Checking the latest public release…") }
+    var updateCheckBusy by remember { mutableStateOf(false) }
+    var updateDownloadBusy by remember { mutableStateOf(false) }
+    val updateScope = rememberCoroutineScope()
+
+    fun checkForUpdates() {
+        if (updateCheckBusy) return
+        updateScope.launch {
+            updateCheckBusy = true
+            val result = withContext(Dispatchers.IO) {
+                runCatching { NuviaUpdateManager.checkForUpdate(context) }
+            }
+            result.onSuccess { release ->
+                updateRelease = release
+                updateStatus = if (release == null) {
+                    "Nuvia is up to date."
+                } else {
+                    "A newer version is available."
+                }
+                downloadedApk = null
+            }.onFailure { error ->
+                updateRelease = null
+                updateStatus = error.message ?: "Couldn't check for updates. Try again."
+            }
+            updateCheckBusy = false
+        }
+    }
+
+    LaunchedEffect(Unit) { checkForUpdates() }
     var replacement by remember { mutableStateOf(NuviaStore.isReplacementEnabled(context)) }
     var islandEnabled by remember { mutableStateOf(NuviaStore.isIslandEnabled(context)) }
     var hideContent by remember { mutableStateOf(NuviaStore.isHideContentEnabled(context)) }
@@ -762,13 +801,89 @@ private fun SettingsScreen(
             )
         }
 
+        SettingsGroup("APP UPDATES") {
+            Text(updateStatus, color = Muted, fontSize = 11.sp, lineHeight = 16.sp)
+            updateRelease?.let { release ->
+                Text("Version ${release.version} is ready", color = Teal, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                if (release.notes.isNotBlank()) {
+                    Text(release.notes.take(360), color = Muted, fontSize = 10.sp, lineHeight = 14.sp)
+                }
+                Button(
+                    onClick = {
+                        updateRelease?.let { selectedRelease ->
+                            updateScope.launch {
+                                updateDownloadBusy = true
+                                updateStatus = "Downloading version ${selectedRelease.version}…"
+                                val result = withContext(Dispatchers.IO) {
+                                    runCatching { NuviaUpdateManager.downloadApk(context, selectedRelease) }
+                                }
+                                result.onSuccess { apk ->
+                                    downloadedApk = apk
+                                    runCatching { NuviaUpdateManager.openInstaller(context, apk) }
+                                        .onSuccess { installer ->
+                                            updateStatus = when (installer) {
+                                                InstallerResult.PERMISSION_REQUIRED ->
+                                                    "APK downloaded. Allow Nuvia to install unknown apps, then tap Install update."
+                                                InstallerResult.OPENED ->
+                                                    "Android's installer is open. Confirm the update there."
+                                            }
+                                        }
+                                        .onFailure { error ->
+                                            updateStatus = error.message ?: "The installer could not be opened."
+                                        }
+                                }.onFailure { error ->
+                                    updateStatus = error.message ?: "APK download failed. Try again."
+                                }
+                                updateDownloadBusy = false
+                            }
+                        }
+                    },
+                    enabled = !updateDownloadBusy,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Violet, contentColor = Midnight)
+                ) {
+                    Text(if (updateDownloadBusy) "Downloading…" else "Download and install")
+                }
+            }
+            downloadedApk?.let { apk ->
+                OutlinedButton(
+                    onClick = {
+                        runCatching { NuviaUpdateManager.openInstaller(context, apk) }
+                            .onSuccess { result ->
+                                updateStatus = if (result == InstallerResult.PERMISSION_REQUIRED) {
+                                    "Allow Nuvia to install unknown apps in Android settings, then tap Install update again."
+                                } else {
+                                    "Android's installer is open. Confirm the update there."
+                                }
+                            }
+                            .onFailure { error ->
+                                updateStatus = error.message ?: "The installer could not be opened."
+                            }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text("Install downloaded update")
+                }
+            }
+            OutlinedButton(
+                onClick = { checkForUpdates() },
+                enabled = !updateCheckBusy,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Text(if (updateCheckBusy) "Checking…" else "Check for updates")
+            }
+        }
+
         SettingsGroup("ABOUT") {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
                 Icon(Icons.Rounded.Smartphone, null, tint = Violet)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Nuvia for Android", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    Text("Early build · Version 0.1.2", color = Muted, fontSize = 10.sp)
+                    Text("Early build · Version 0.1.4", color = Muted, fontSize = 10.sp)
                 }
                 Text("BETA", color = Teal, fontSize = 9.sp, letterSpacing = 1.2.sp, fontWeight = FontWeight.Bold)
             }
