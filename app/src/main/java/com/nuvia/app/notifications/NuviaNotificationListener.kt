@@ -68,7 +68,7 @@ class NuviaNotificationListener : NotificationListenerService() {
         // Native Xiaomi HyperIsland is used when available. Android overlay is only a fallback.
         // Critical/ongoing notifications stay entirely with their source app. Do not
         // create a second island alert for a notification we deliberately preserve.
-        val islandShown = if (islandEnabled && !preserveOriginal) {
+        val islandShown = if (islandEnabled && !preserveOriginal && canPostQuietCopies(this)) {
             NuviaHyperIslandController.showNotification(
                 context = this,
                 sbn = sbn,
