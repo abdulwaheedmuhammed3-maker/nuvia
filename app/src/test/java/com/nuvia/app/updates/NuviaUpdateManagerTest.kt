@@ -14,6 +14,9 @@ class NuviaUpdateManagerTest {
         assertNull(stableVersionFromTag("0.1.9"))
         assertNull(stableVersionFromTag("v0.1"))
         assertNull(stableVersionFromTag("v0.1.9-rc1"))
+        assertNull(stableVersionFromTag("v01.2.3"))
+        assertNull(stableVersionFromTag("v1.02.3"))
+        assertNull(stableVersionFromTag("v1.2.03"))
         assertNull(stableVersionFromTag("latest"))
     }
 
