@@ -87,7 +87,12 @@ class NuviaNotificationListener : NotificationListenerService() {
 
         // Replacing the source notification remains an independent optional setting.
         if (shouldReplace) {
-            publishReplacement(sbn, appName, title, message)
+            val replacementPosted = publishReplacement(sbn, appName, title, message)
+            // If a quiet copy could not be posted, keep the source app alert and remove
+            // the island preview. Otherwise both surfaces could interrupt the user.
+            if (islandShown && !replacementPosted) {
+                NuviaHyperIslandController.dismiss(this, sbn.key)
+            }
         }
     }
 
