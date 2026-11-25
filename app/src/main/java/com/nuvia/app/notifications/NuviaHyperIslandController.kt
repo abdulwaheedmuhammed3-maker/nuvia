@@ -410,7 +410,7 @@ object NuviaHyperIslandController {
 internal fun shouldClearNuviaNotification(tag: String?, isNativeIslandCard: Boolean): Boolean =
     tag?.startsWith("nuvia:") == true || isNativeIslandCard
 
-object IslandOverlayController {
+// Views use application context and are detached/cleared by hide() to avoid retaining Activity instances.\n@SuppressLint("StaticFieldLeak")\nobject IslandOverlayController {
     private const val COLLAPSED_WIDTH_DP = 116
     private const val COLLAPSED_HEIGHT_DP = 36
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -564,7 +564,7 @@ object IslandOverlayController {
         header.addView(detail, LinearLayout.LayoutParams(0, dp(40), 1f))
 
         val time = TextView(context).apply {
-            text = "NOW"
+            text = context.getString(R.string.island_time_now)
             textSize = 9f
             letterSpacing = 0.08f
             setTextColor(Color.rgb(151, 160, 177))
