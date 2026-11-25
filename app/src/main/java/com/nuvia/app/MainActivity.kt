@@ -737,10 +737,8 @@ private fun SettingsScreen(
                 status = if (overlayEnabled) "Allowed" else "Optional",
                 complete = overlayEnabled,
                 onClick = {
-                    if (Build.VERSION.SDK_INT >= 23) {
-                        runCatching {
-                            context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                        }
+                    runCatching {
+                        context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                     }
                 }
             )
