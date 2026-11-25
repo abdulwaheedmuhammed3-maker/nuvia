@@ -145,6 +145,7 @@ class NuviaNotificationListener : NotificationListenerService() {
 
         return try {
             createMirrorChannel()
+            if (!isQuietMirrorChannelEnabled()) return false
             val original = sbn.notification
             val hideContent = NuviaStore.isHideContentEnabled(this)
             val visibleTitle = if (hideContent) "New notification" else title.ifBlank { appName }
@@ -191,8 +192,16 @@ class NuviaNotificationListener : NotificationListenerService() {
                 builder.addAction(actionBuilder.build())
             }
 
-            NotificationManagerCompat.from(this).notify("nuvia:${sbn.key}", sbn.id, builder.build())
-            // Only dismiss the source notification after Nuvia's replacement has been posted.
+            val replacementTag = "nuvia:${sbn.key}"
+            NotificationManagerCompat.from(this).notify(replacementTag, sbn.id, builder.build())
+
+            // NotificationManager.notify() has no result. Confirm the quiet copy is active
+            // before dismissing the source, so blocked channels cannot silently lose an alert.
+            val replacementIsActive = getSystemService(NotificationManager::class.java)
+                .activeNotifications
+                .any { it.tag == replacementTag && it.id == sbn.id }
+            if (!replacementIsActive) return false
+
             cancelNotification(sbn.key)
             true
         } catch (_: SecurityException) {
@@ -215,6 +224,14 @@ class NuviaNotificationListener : NotificationListenerService() {
             allowedDataTypes?.forEach { builder.setAllowDataType(it, true) }
         }
         return builder.build()
+    }
+
+    private fun isQuietMirrorChannelEnabled(): Boolean {
+        if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) return false
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return true
+        val channel = getSystemService(NotificationManager::class.java)
+            .getNotificationChannel(CHANNEL_ID) ?: return false
+        return channel.importance != NotificationManager.IMPORTANCE_NONE
     }
 
     private fun createMirrorChannel() {
