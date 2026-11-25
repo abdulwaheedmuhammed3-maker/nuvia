@@ -380,7 +380,7 @@ object IslandOverlayController {
                     visibility = View.INVISIBLE
                 }
             }
-            appView?.text = appName
+            appView?.text = appName.uppercase()
             titleView?.text = title
             messageView?.text = message
             setExpanded(true)
