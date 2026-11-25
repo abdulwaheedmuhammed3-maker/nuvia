@@ -507,7 +507,6 @@ object IslandOverlayController {
         } else context.resources.displayMetrics.widthPixels
         val collapsedWidth = dp(COLLAPSED_WIDTH_DP)
         val collapsedHeight = dp(COLLAPSED_HEIGHT_DP)
-        val expandedWidth = (screenWidth - dp(28)).coerceAtMost(dp(360)).coerceAtLeast(dp(250))
 
         val statusBarResource = context.resources.getIdentifier("status_bar_height", "dimen", "android")
         val statusBarHeight = if (statusBarResource > 0) {
@@ -551,7 +550,7 @@ object IslandOverlayController {
         if (value) {
             details?.visibility = View.VISIBLE
             messageView?.visibility = View.VISIBLE
-            closeView?.visibility = View.VISIBLE
+            closeView?.visibility = View.GONE
             dotView?.visibility = View.VISIBLE
             timeView?.visibility = View.VISIBLE
             iconView?.visibility = if (iconView?.drawable != null) View.VISIBLE else View.INVISIBLE
