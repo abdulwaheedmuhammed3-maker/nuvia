@@ -96,6 +96,14 @@ class NuviaNotificationListener : NotificationListenerService() {
         reason: Int
     ) {
         super.onNotificationRemoved(sbn, rankingMap, reason)
+        if (sbn == null) return
+
+        // Release native-island key mappings when Nuvia's own timed island notification expires.
+        if (sbn.packageName == packageName) {
+            if (sbn.tag == null) NuviaHyperIslandController.onNativeNotificationRemoved(sbn.id)
+            return
+        }
+
         // Do not react to REASON_LISTENER_CANCEL: that is Nuvia dismissing the source
         // after its quiet copy is posted. App/user cancellations should close the matching island.
         val sourceWasCancelled = reason == REASON_CANCEL ||
@@ -104,7 +112,7 @@ class NuviaNotificationListener : NotificationListenerService() {
             reason == REASON_APP_CANCEL_ALL ||
             reason == REASON_GROUP_SUMMARY_CANCELED ||
             reason == REASON_TIMEOUT
-        if (sbn != null && sbn.packageName != packageName && sourceWasCancelled) {
+        if (sourceWasCancelled) {
             NuviaHyperIslandController.dismiss(this, sbn.key)
         }
     }
