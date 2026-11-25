@@ -48,7 +48,7 @@ Production release APKs are signed with one persistent upload key. Before publis
    `keytool -genkeypair -v -keystore nuvia-release.jks -keyalg RSA -keysize 4096 -validity 10000 -alias nuvia`
 2. Back up `nuvia-release.jks` securely. Never commit it to this repository or share it publicly.
 3. Base64-encode the keystore file and add these repository secrets under **Settings → Secrets and variables → Actions**: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`.
-4. Push a version tag matching the Gradle version, for example `v0.1.4`. The workflow builds a signed release APK, creates a GitHub Release, and attaches the APK and SHA-256 checksum.
+4. Publish a GitHub Release using a tag matching the Gradle version, for example `v0.1.4` (or push that tag). The workflow builds a signed release APK and attaches it, with its SHA-256 checksum, to the release.
 
 For PowerShell, create the Base64 value with:
 `[Convert]::ToBase64String([IO.File]::ReadAllBytes("nuvia-release.jks"))`
