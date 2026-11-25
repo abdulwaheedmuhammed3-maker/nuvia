@@ -2,7 +2,7 @@
 
 **Nuvia** is an early native Android notification companion built with Kotlin and Jetpack Compose. The first foundation includes a modern dark dashboard, a notification inbox, per-app selection, permission setup, an in-app Dynamic Island preview, a floating overlay preview, and a notification replacement service.
 
-> Project version: 0.1.2.
+> Project version: 0.1.3.
 
 Project status: source foundation created. This is not a tested APK yet. The current workspace does not have the Android SDK or Android Gradle tooling installed, so a device build and runtime verification still need to happen in Android Studio or CI.
 
@@ -20,8 +20,8 @@ The project targets Android 16 (API 36) and supports Android 8.0 (API 26) and la
 
 1. Open Nuvia and go to **Settings**.
 2. Grant **Notification access**. This is required to read notifications from other apps.
-3. Grant **Display over other apps** to show the floating island above other apps.
-4. On Android 13+, allow Nuvia to post notifications. This is required to create replacement notifications.
+3. Grant **Display over other apps** for the fallback capsule on devices without native HyperOS support.
+4. On Xiaomi/POCO/Redmi HyperOS, also enable Nuvia's **Focus notifications** and **Show in status bar** permissions for native HyperIsland rendering. On Android 13+, allow Nuvia to post notifications.
 5. Open **Apps** and select which apps Nuvia is allowed to manage.
 6. Enable **Replace original notifications** only after testing the experience with non-critical apps first.
 
@@ -34,7 +34,7 @@ Floating island display is enabled by default for selected apps. Original-notifi
 - Lets the user select launcher apps individually.
 - When replacement is explicitly enabled for a selected app, posts a Nuvia notification using the source notification's content intent and up to three original actions.
 - Copies Android `RemoteInput` metadata for supported inline-reply actions, then asks Android to dismiss the source notification after the replacement notification has been posted.
-- Shows a short floating island-style overlay for selected apps when overlay permission is granted, independently of original-notification replacement.
+- On supported Xiaomi/POCO/Redmi HyperOS devices, publishes native Focus Notifications with the source app's own icon and a permanent empty island when idle. On other Android devices, uses a centred persistent capsule overlay as a fallback.
 - Preserves ongoing notifications, foreground-service notifications, group summaries, calls, alarms, media/transport, navigation and system-category notifications.
 - Supports a local privacy option that hides message content in Nuvia's inbox and replacement display.
 
@@ -44,7 +44,7 @@ Nuvia is not an OS-level replacement for Android's notification shade. A third-p
 
 Copying a notification's `PendingIntent` and `RemoteInput` preserves the original action objects where the source app supports it, but it cannot guarantee every app's custom action will continue working after the original notification is dismissed. Messaging apps, banking apps, call apps and OEM-modified Android builds may behave differently. This must be tested app-by-app before enabling replacement broadly.
 
-The floating island uses Android's special **Display over other apps** permission. Android/OEM power management may delay or prevent overlays under some circumstances. The overlay is a compact heads-up presentation, not a privileged system surface.
+On supported Xiaomi/POCO/Redmi HyperOS firmware, the island is rendered by the system through its Focus Notification protocol, provided the required system permissions are enabled. On other devices, Nuvia uses Android's **Display over other apps** permission for a fallback capsule. That fallback is not a privileged system surface and OEM power management can affect its availability.
 
 ## Next build milestones
 
@@ -52,7 +52,7 @@ The floating island uses Android's special **Display over other apps** permissio
 2. Verify listener access, app discovery and notification capture.
 3. Test copied reply actions on WhatsApp, Telegram, Messages and Gmail before relying on them.
 4. Test cancellation/replacement ordering and ensure no original notification disappears when Nuvia fails to post its replacement.
-5. Refine the island placement, expansion gesture, animation and icon rendering against the target device's status bar/cutout.
+5. Verify native HyperIsland rendering, app-specific icon selection, persistent idle state and dismissal behaviour on the target Xiaomi/HyperOS firmware.
 6. Add durable local storage, notification grouping, per-app rules and diagnostics after the core replacement path is stable.
 
 ## Source layout
