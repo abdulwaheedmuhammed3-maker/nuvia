@@ -841,9 +841,13 @@ private fun SettingsScreen(
                 description = "Store and display a generic preview instead of message text.",
                 checked = hideContent,
                 enabled = true,
-                onCheckedChange = {
-                    hideContent = it
-                    NuviaStore.setHideContentEnabled(context, it)
+                onCheckedChange = { enabled ->
+                    hideContent = enabled
+                    NuviaStore.setHideContentEnabled(context, enabled)
+                    if (enabled) {
+                        NuviaStore.redactExistingNotificationContent(context)
+                        NuviaHyperIslandController.clearActiveNotifications(context)
+                    }
                 }
             )
         }
