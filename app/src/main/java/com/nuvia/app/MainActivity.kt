@@ -73,6 +73,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -113,6 +114,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 
 private val Midnight = Color(0xFF090B12)
 private val SurfaceOne = Color(0xFF111624)
@@ -644,6 +646,7 @@ private fun SettingsScreen(
     LaunchedEffect(Unit) { checkForUpdates() }
     var replacement by remember { mutableStateOf(NuviaStore.isReplacementEnabled(context)) }
     var islandEnabled by remember { mutableStateOf(NuviaStore.isIslandEnabled(context)) }
+    var islandDisplayDuration by remember { mutableIntStateOf(NuviaStore.islandDisplayDurationSeconds(context)) }
     var hideContent by remember { mutableStateOf(NuviaStore.isHideContentEnabled(context)) }
     var showPermissionHint by remember { mutableStateOf(false) }
     var permissionRefresh by remember { mutableIntStateOf(0) }
@@ -767,6 +770,36 @@ private fun SettingsScreen(
                     fontSize = 11.sp,
                     modifier = Modifier.padding(start = 44.dp, bottom = 4.dp)
                 )
+            }
+            Divider(color = Line.copy(alpha = 0.7f))
+            Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("Island display duration", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Time a new notification stays expanded before the island collapses.", color = Muted, fontSize = 10.sp, lineHeight = 14.sp)
+                    }
+                    Text(
+                        "$islandDisplayDuration sec",
+                        color = Teal,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Slider(
+                    value = islandDisplayDuration.toFloat(),
+                    onValueChange = { value ->
+                        val seconds = value.roundToInt().coerceIn(1, 15)
+                        islandDisplayDuration = seconds
+                        NuviaStore.setIslandDisplayDurationSeconds(context, seconds)
+                    },
+                    valueRange = 1f..15f,
+                    steps = 13,
+                    enabled = islandEnabled
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("1 sec", color = Muted, fontSize = 9.sp)
+                    Text("15 sec", color = Muted, fontSize = 9.sp)
+                }
             }
             Divider(color = Line.copy(alpha = 0.7f))
             SettingSwitch(
