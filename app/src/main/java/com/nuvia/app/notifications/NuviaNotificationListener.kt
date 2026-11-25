@@ -113,7 +113,11 @@ class NuviaNotificationListener : NotificationListenerService() {
             reason == REASON_APP_CANCEL_ALL ||
             reason == REASON_GROUP_SUMMARY_CANCELED ||
             reason == REASON_TIMEOUT
-        if (sourceWasCancelled) {
+        if (sourceWasCancelled || reason == REASON_CLICK) {
+            // A user/app dismissal or click on the source should also remove Nuvia's
+            // mirrored shade copy. Do not do this for REASON_LISTENER_CANCEL: that
+            // is Nuvia cancelling the source after its quiet copy was successfully posted.
+            NotificationManagerCompat.from(this).cancel("nuvia:${sbn.key}", sbn.id)
             NuviaHyperIslandController.dismiss(this, sbn.key)
         }
     }
