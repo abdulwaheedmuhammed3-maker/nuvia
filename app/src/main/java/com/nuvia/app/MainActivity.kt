@@ -72,6 +72,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -87,6 +88,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -149,6 +154,7 @@ private enum class Destination(val label: String) {
 @Composable
 private fun NuviaRoot() {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     var destination by rememberSaveable { mutableStateOf(Destination.HOME) }
     var notifications by remember { mutableStateOf(NuviaStore.getNotifications(context)) }
     var listenerEnabled by remember { mutableStateOf(isNotificationListenerEnabled(context)) }
@@ -164,14 +170,18 @@ private fun NuviaRoot() {
         }
     }
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            notifications = NuviaStore.getNotifications(context)
-            listenerEnabled = isNotificationListenerEnabled(context)
-            overlayEnabled = Settings.canDrawOverlays(context)
-            notificationsAllowed = NuviaHyperIslandController.canPostNotifications(context)
-            quietCopyChannelEnabled = NuviaNotificationListener.canPostQuietCopies(context)
-            delay(1200)
+    // Poll only while the activity is visible. Background polling needlessly wakes
+    // the process and repeatedly recomposes the root screen.
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                notifications = NuviaStore.getNotifications(context)
+                listenerEnabled = isNotificationListenerEnabled(context)
+                overlayEnabled = Settings.canDrawOverlays(context)
+                notificationsAllowed = NuviaHyperIslandController.canPostNotifications(context)
+                quietCopyChannelEnabled = NuviaNotificationListener.canPostQuietCopies(context)
+                delay(1200)
+            }
         }
     }
 
@@ -529,9 +539,25 @@ private data class LaunchableApp(val packageName: String, val label: String)
 @Composable
 private fun AppsScreen() {
     val context = LocalContext.current
-    val apps = remember { getLaunchableApps(context) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var apps by remember { mutableStateOf(getLaunchableApps(context)) }
     var query by rememberSaveable { mutableStateOf("") }
-    var selected by remember { mutableStateOf(NuviaStore.managedPackages(context).intersect(apps.map { it.packageName }.toSet())) }
+    var selected by remember {
+        mutableStateOf(NuviaStore.managedPackages(context).intersect(apps.map { it.packageName }.toSet()))
+    }
+    DisposableEffect(lifecycleOwner, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val refreshedApps = getLaunchableApps(context)
+                val installedPackages = refreshedApps.mapTo(mutableSetOf()) { it.packageName }
+                apps = refreshedApps
+                selected = NuviaStore.managedPackages(context).intersect(installedPackages)
+                NuviaStore.setAllPackagesManaged(context, selected)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     val filtered = apps.filter { it.label.contains(query, ignoreCase = true) || it.packageName.contains(query, ignoreCase = true) }
 
     LazyColumn(
