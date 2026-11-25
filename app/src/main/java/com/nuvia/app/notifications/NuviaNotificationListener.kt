@@ -260,22 +260,20 @@ class NuviaNotificationListener : NotificationListenerService() {
     private fun isQuietMirrorChannelEnabled(): Boolean = canPostQuietCopies(this)
 
     private fun createMirrorChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager = getSystemService(NotificationManager::class.java)
-            val existing = manager.getNotificationChannel(CHANNEL_ID)
-            if (existing == null) {
-                val channel = NotificationChannel(
-                    CHANNEL_ID,
-                    "Nuvia quiet copies",
-                    NotificationManager.IMPORTANCE_LOW
-                ).apply {
-                    description = "Quiet copies retained in the notification shade while Nuvia's island handles pop-up alerts"
-                    setSound(null, null)
-                    enableVibration(false)
-                    setShowBadge(true)
-                }
-                manager.createNotificationChannel(channel)
+        val manager = getSystemService(NotificationManager::class.java)
+        val existing = manager.getNotificationChannel(CHANNEL_ID)
+        if (existing == null) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Nuvia quiet copies",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Quiet copies retained in the notification shade while Nuvia's island handles pop-up alerts"
+                setSound(null, null)
+                enableVibration(false)
+                setShowBadge(true)
             }
+            manager.createNotificationChannel(channel)
         }
     }
 
