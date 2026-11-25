@@ -230,26 +230,24 @@ object NuviaHyperIslandController {
         activeIds.clear()
         activeKeysById.clear()
 
-        // Quiet shade copies are posted with this private tag prefix.
+        // Also inspect Android's active list so cards survive cleanup after Nuvia's
+        // process has restarted and its in-memory source-key map has been recreated.
         runCatching {
-            app.getSystemService(NotificationManager::class.java).activeNotifications
-                .filter { it.tag?.startsWith("nuvia:") == true }
-                .forEach { statusBarNotification ->
-                    NotificationManagerCompat.from(app).cancel(
-                        statusBarNotification.tag,
-                        statusBarNotification.id
-                    )
+            val manager = app.getSystemService(NotificationManager::class.java)
+            manager.activeNotifications
+                .filter { notification ->
+                    notification.tag?.startsWith("nuvia:") == true ||
+                        (notification.tag == null && notification.id != PERMANENT_ID)
+                }
+                .forEach { notification ->
+                    NotificationManagerCompat.from(app).cancel(notification.tag, notification.id)
                 }
         }
         IslandOverlayController.clearNotification()
     }
 
     private fun cancelAll(context: Context) {
-        activeIds.values.toSet().forEach { id ->
-            runCatching { NotificationManagerCompat.from(context).cancel(id) }
-        }
-        activeIds.clear()
-        activeKeysById.clear()
+        clearActiveNotifications(context)
         NotificationManagerCompat.from(context).cancel(PERMANENT_ID)
     }
 
