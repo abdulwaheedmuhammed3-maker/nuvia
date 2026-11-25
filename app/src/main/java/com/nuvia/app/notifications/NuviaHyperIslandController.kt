@@ -133,7 +133,7 @@ object NuviaHyperIslandController {
             )
         } else if (Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(app)) {
             val icon = runCatching { app.packageManager.getApplicationIcon(sbn.packageName) }.getOrNull()
-            IslandOverlayController.showNotification(
+            return IslandOverlayController.showNotification(
                 context = app,
                 appName = appName,
                 title = title,
@@ -141,7 +141,6 @@ object NuviaHyperIslandController {
                 appIcon = icon,
                 contentIntent = sbn.notification.contentIntent
             )
-            return true
         }
         return false
     }
@@ -219,7 +218,17 @@ object NuviaHyperIslandController {
         }
     }
 
+    private fun canPostToIslandChannel(context: Context): Boolean {
+        if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return false
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return true
+        val channel = context.getSystemService(NotificationManager::class.java)
+            .getNotificationChannel(CHANNEL_ID) ?: return false
+        return channel.importance != NotificationManager.IMPORTANCE_NONE
+    }
+
     private fun postPermanentIsland(context: Context) {
+        ensureChannel(context)
+        if (!canPostToIslandChannel(context)) return
         runCatching {
             val builder = HyperIslandNotification.Builder(context, "nuvia_permanent", "Nuvia")
             builder.setEnableFloat(false)
@@ -264,6 +273,7 @@ object NuviaHyperIslandController {
         contentIntent: PendingIntent?
     ): Boolean {
         ensureChannel(context)
+        if (!canPostToIslandChannel(context)) return false
         val id = (key.hashCode() and 0x7fffffff).let {
             when (it) {
                 0 -> 10000
@@ -370,26 +380,35 @@ object IslandOverlayController {
         message: String,
         appIcon: Drawable?,
         contentIntent: PendingIntent?
-    ) {
-        handler.post {
-            if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(context)) return@post
-            createIfNeeded(context.applicationContext)
-            currentIntent = contentIntent
-            iconView?.apply {
-                if (appIcon != null) {
-                    setImageDrawable(appIcon)
-                    visibility = View.VISIBLE
-                } else {
-                    visibility = View.INVISIBLE
-                }
+    ): Boolean {
+        // NotificationListenerService invokes onNotificationPosted on the main thread.
+        // Refuse replacement if we cannot synchronously attach the overlay; otherwise the
+        // original app alert must remain visible as the safe fallback.
+        if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) return false
+        if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(context)) return false
+
+        createIfNeeded(context.applicationContext)
+        if (!attached) return false
+
+        currentIntent = contentIntent
+        iconView?.apply {
+            if (appIcon != null) {
+                setImageDrawable(appIcon)
+                visibility = View.VISIBLE
+            } else {
+                visibility = View.INVISIBLE
             }
-            appView?.text = appName.uppercase()
-            titleView?.text = title
-            messageView?.text = message
-            setExpanded(true)
-            collapseTask?.let(handler::removeCallbacks)
-            collapseTask = Runnable { setExpanded(false) }.also { handler.postDelayed(it, NuviaStore.islandDisplayDurationSeconds(context).toLong() * 1_000L) }
         }
+        appView?.text = appName.uppercase()
+        titleView?.text = title
+        messageView?.text = message
+        if (!setExpanded(true)) return false
+
+        collapseTask?.let(handler::removeCallbacks)
+        collapseTask = Runnable { setExpanded(false) }.also {
+            handler.postDelayed(it, NuviaStore.islandDisplayDurationSeconds(context).toLong() * 1_000L)
+        }
+        return true
     }
 
     private fun createIfNeeded(context: Context) {
@@ -541,11 +560,11 @@ object IslandOverlayController {
         }
     }
 
-    private fun setExpanded(value: Boolean) {
-        val view = root ?: return
-        val wm = windowManager ?: return
-        val layout = params ?: return
-        val context = appContext ?: return
+    private fun setExpanded(value: Boolean): Boolean {
+        val view = root ?: return false
+        val wm = windowManager ?: return false
+        val layout = params ?: return false
+        val context = appContext ?: return false
         expanded = value
         val density = context.resources.displayMetrics.density
         fun dp(v: Int) = (v * density).toInt()
@@ -579,8 +598,10 @@ object IslandOverlayController {
             view.scaleX = 0.94f
             view.scaleY = 0.94f
             view.animate().scaleX(1f).scaleY(1f).setDuration(180L).start()
+            return true
         } catch (_: Exception) {
             hide()
+            return false
         }
     }
 
