@@ -9,31 +9,15 @@ class NotificationPreservationPolicyTest {
 
     @Test
     fun preservesOngoingAndForegroundNotifications() {
-        assertTrue(shouldPreserveOriginalNotification(true, 0, null, null))
-        assertTrue(
-            shouldPreserveOriginalNotification(
-                false, Notification.FLAG_FOREGROUND_SERVICE, null, null
-            )
-        )
-        assertTrue(
-            shouldPreserveOriginalNotification(
-                false, Notification.FLAG_ONGOING_EVENT, null, null
-            )
-        )
+        assertTrue(shouldPreserveOriginalNotification(true, 0, null))
+        assertTrue(shouldPreserveOriginalNotification(false, Notification.FLAG_FOREGROUND_SERVICE, null))
+        assertTrue(shouldPreserveOriginalNotification(false, Notification.FLAG_ONGOING_EVENT, null))
     }
 
     @Test
-    fun preservesGroupSummariesAndGroupedChildren() {
-        assertTrue(
-            shouldPreserveOriginalNotification(
-                false, Notification.FLAG_GROUP_SUMMARY, "group.messages", null
-            )
-        )
-        assertTrue(
-            shouldPreserveOriginalNotification(
-                false, 0, "group.messages", Notification.CATEGORY_MESSAGE
-            )
-        )
+    fun preservesGroupSummariesButAllowsGroupedMessageChildren() {
+        assertTrue(shouldPreserveOriginalNotification(false, Notification.FLAG_GROUP_SUMMARY, Notification.CATEGORY_MESSAGE))
+        assertFalse(shouldPreserveOriginalNotification(false, 0, Notification.CATEGORY_MESSAGE))
     }
 
     @Test
@@ -46,18 +30,14 @@ class NotificationPreservationPolicyTest {
             Notification.CATEGORY_NAVIGATION,
             Notification.CATEGORY_SYSTEM
         ).forEach { category ->
-            assertTrue(shouldPreserveOriginalNotification(false, 0, null, category))
+            assertTrue(shouldPreserveOriginalNotification(false, 0, category))
         }
     }
 
     @Test
     fun allowsOrdinaryUngroupedMessages() {
-        assertFalse(
-            shouldPreserveOriginalNotification(
-                false, 0, null, Notification.CATEGORY_MESSAGE
-            )
-        )
-        assertFalse(shouldPreserveOriginalNotification(false, 0, "", null))
+        assertFalse(shouldPreserveOriginalNotification(false, 0, Notification.CATEGORY_MESSAGE))
+        assertFalse(shouldPreserveOriginalNotification(false, 0, null))
     }
 
     @Test

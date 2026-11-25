@@ -130,7 +130,6 @@ class NuviaNotificationListener : NotificationListenerService() {
         shouldPreserveOriginalNotification(
             isOngoing = sbn.isOngoing,
             flags = sbn.notification.flags,
-            groupKey = sbn.groupKey,
             category = sbn.notification.category
         )
 
