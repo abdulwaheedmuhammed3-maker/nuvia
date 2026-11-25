@@ -22,8 +22,22 @@ object NuviaStore {
         val existingIndex = current.indexOfFirst { it.key == record.key }
         if (existingIndex >= 0) current.removeAt(existingIndex)
         current.add(0, record)
+        persistNotifications(context, current)
+    }
+
+    fun redactExistingNotificationContent(context: Context) {
+        val redacted = getNotifications(context).map { record ->
+            record.copy(
+                title = "New notification",
+                message = "Content hidden by Nuvia"
+            )
+        }
+        persistNotifications(context, redacted)
+    }
+
+    private fun persistNotifications(context: Context, records: List<NotificationRecord>) {
         val json = JSONArray()
-        current.take(100).forEach { item ->
+        records.take(100).forEach { item ->
             json.put(JSONObject().apply {
                 put("key", item.key)
                 put("packageName", item.packageName)
