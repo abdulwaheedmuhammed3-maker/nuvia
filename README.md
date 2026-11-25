@@ -2,7 +2,7 @@
 
 **Nuvia** is an early native Android notification companion built with Kotlin and Jetpack Compose. The first foundation includes a modern dark dashboard, a notification inbox, per-app selection, permission setup, an in-app Dynamic Island preview, a floating overlay preview, and a notification replacement service.
 
-> Project version: 0.1.10.
+> Project version: 0.1.11.
 
 Project status: GitHub Actions builds and tests the debug APK on pushes to main, and builds signed release APKs for version-matched published GitHub Releases. Device-level behaviour still needs verification on the target Android/HyperOS phone.
 
@@ -26,7 +26,7 @@ The project targets Android 16 (API 36) and supports Android 8.0 (API 26) and la
 
 When the floating island is disabled, **Quiet original notifications** can be enabled separately to keep selected app alerts in the shade without a second pop-up.
 
-## Audit fixes in 0.1.10
+## Audit fixes in 0.1.11
 
 - Rebuilt the Inbox and Apps screens as single scrollable LazyColumn layouts to prevent nested/unbounded lists and clipped content on smaller displays.
 - Prevents island pop-ups from being emitted when the quiet-copy channel is blocked or not safely configured, leaving the source notification untouched instead of creating a duplicate pop-up.
@@ -128,3 +128,14 @@ On supported Xiaomi/POCO/Redmi HyperOS firmware, the island is rendered by the s
 - Java: 17
 
 The versions are pinned rather than using dynamic `+` versions.
+
+## Audit fixes in 0.1.11
+
+- Preserve grouped notifications as source-owned notifications so Nuvia does not replace only child alerts and leave a stale source-app group summary.
+- Clear mirrored shade cards for every source-removal reason except the listener-cancel event Nuvia itself emits after a successful replacement.
+- Mark native island cards explicitly, allowing post-restart cleanup to target Nuvia island notifications without cancelling unrelated untagged Nuvia notifications.
+- Preserve both text and data-only RemoteInput entries when copying action buttons, including attachment-oriented reply inputs.
+- Translate notification semantic-action and inline-reply edit constants to AndroidX equivalents before rebuilding actions.
+- Compare numeric version segments as strings so very large version components cannot overflow 32-bit integers.
+- Explicitly exclude private notification data from both cloud backup and device-to-device transfer rules.
+
