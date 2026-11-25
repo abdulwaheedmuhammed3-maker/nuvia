@@ -342,15 +342,18 @@ private fun HomeScreen(
             border = androidx.compose.foundation.BorderStroke(1.dp, Line)
         ) {
             Column(Modifier.padding(17.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                val nativeIslandReady = NuviaHyperIslandController.isXiaomiDevice() &&
+                    NuviaHyperIslandController.isNativeReady(LocalContext.current)
+                val islandReady = overlayEnabled || nativeIslandReady
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text("Make Nuvia yours", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                        Text("Two permissions unlock the experience.", color = Muted, fontSize = 12.sp)
+                        Text("Grant the permissions required by your device.", color = Muted, fontSize = 12.sp)
                     }
                     Icon(Icons.Rounded.Bolt, null, tint = Violet)
                 }
                 SetupStep("01", "Notification access", if (listenerEnabled) "Connected" else "Needs setup", listenerEnabled)
-                SetupStep("02", "Floating island", if (overlayEnabled) "Ready" else "Optional permission", overlayEnabled)
+                SetupStep("02", "Floating island", if (islandReady) "Ready" else "Needs setup", islandReady)
                 Button(
                     onClick = onOpenSettings,
                     modifier = Modifier.fillMaxWidth(),
@@ -522,7 +525,7 @@ private fun AppsScreen() {
         BrandHeader("CHOOSE WHAT NUVIA MANAGES")
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Your apps", fontSize = 30.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.8).sp)
-            Text("Select which apps can appear in your island. Notification replacement is optional.", color = Muted, fontSize = 12.sp)
+            Text("Choose which apps Nuvia manages. With the island on, their alerts appear in the island and are kept quietly in your shade.", color = Muted, fontSize = 12.sp)
         }
         Card(
             colors = CardDefaults.cardColors(containerColor = SurfaceOne),
@@ -732,7 +735,7 @@ private fun SettingsScreen(
                 PermissionRow(
                     icon = Icons.Rounded.Bolt,
                     title = "Post notifications",
-                    description = "Needed to publish a replacement with original actions.",
+                    description = "Needed for Nuvia to publish island and quiet shade notifications.",
                     status = if (hasPostPermission) "Allowed" else "Required",
                     complete = hasPostPermission,
                     onClick = {
@@ -1038,7 +1041,7 @@ private fun NotificationRow(record: NotificationRecord, expanded: Boolean = fals
             if (record.hasActions) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                     Icon(Icons.Rounded.Forum, null, tint = Teal, modifier = Modifier.size(12.dp))
-                    Text("Original actions available in the replacement", color = Teal, fontSize = 9.sp)
+                    Text("Source app included action buttons", color = Teal, fontSize = 9.sp)
                 }
             }
         }
