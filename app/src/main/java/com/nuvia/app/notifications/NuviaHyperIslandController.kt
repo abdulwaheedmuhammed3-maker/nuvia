@@ -556,8 +556,8 @@ object IslandOverlayController {
             iconView?.visibility = if (iconView?.drawable != null) View.VISIBLE else View.INVISIBLE
             view.gravity = Gravity.CENTER_VERTICAL
             view.setPadding(dp(12), dp(8), dp(10), dp(8))
-            layout.width = (context.resources.displayMetrics.widthPixels - dp(28)).coerceAtMost(dp(380)).coerceAtLeast(dp(250))
-            layout.height = dp(82)
+            layout.width = (context.resources.displayMetrics.widthPixels * 0.80f).toInt().coerceAtMost(dp(380)).coerceAtLeast(dp(280))
+            layout.height = dp(92)
         } else {
             details?.visibility = View.GONE
             messageView?.visibility = View.GONE
