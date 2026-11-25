@@ -293,7 +293,6 @@ class NuviaNotificationListener : NotificationListenerService() {
             if (Build.VERSION.SDK_INT >= 33 &&
                 ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
             ) return false
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return true
             val channel = context.getSystemService(NotificationManager::class.java)
                 .getNotificationChannel(CHANNEL_ID) ?: return false
             // Only a low/min-importance channel is safe to replace the source pop-up.
