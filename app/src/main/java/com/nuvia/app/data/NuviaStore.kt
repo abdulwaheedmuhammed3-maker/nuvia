@@ -11,6 +11,7 @@ object NuviaStore {
     private const val REPLACE_ORIGINALS = "replace_originals"
     private const val HIDE_CONTENT = "hide_content"
     private const val ISLAND_ENABLED = "floating_island_enabled"
+    private const val ISLAND_DISPLAY_DURATION_SECONDS = "island_display_duration_seconds"
     private const val MANAGED_PACKAGES = "managed_packages"
 
     private fun prefs(context: Context): SharedPreferences =
@@ -77,6 +78,15 @@ object NuviaStore {
 
     fun setIslandEnabled(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(ISLAND_ENABLED, enabled).apply()
+    }
+
+    fun islandDisplayDurationSeconds(context: Context): Int =
+        prefs(context).getInt(ISLAND_DISPLAY_DURATION_SECONDS, 5).coerceIn(1, 15)
+
+    fun setIslandDisplayDurationSeconds(context: Context, seconds: Int) {
+        prefs(context).edit()
+            .putInt(ISLAND_DISPLAY_DURATION_SECONDS, seconds.coerceIn(1, 15))
+            .apply()
     }
     fun isHideContentEnabled(context: Context): Boolean =
         prefs(context).getBoolean(HIDE_CONTENT, false)
