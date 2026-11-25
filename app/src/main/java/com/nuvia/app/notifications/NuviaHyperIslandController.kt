@@ -46,6 +46,25 @@ object NuviaHyperIslandController {
     private const val CHANNEL_ID = "nuvia_hyper_island_v1"
     private const val PERMANENT_ID = 9999
     private val activeIds = ConcurrentHashMap<String, Int>()
+    private val activeKeysById = ConcurrentHashMap<Int, String>()
+
+    private fun reserveNotificationId(key: String): Int {
+        activeIds[key]?.let { return it }
+        var candidate = key.hashCode() and 0x7fffffff
+        if (candidate < 10_000 || candidate == PERMANENT_ID) candidate = 10_000
+        while (true) {
+            if (candidate == PERMANENT_ID) candidate++
+            val owner = activeKeysById.putIfAbsent(candidate, key)
+            if (owner == null || owner == key) return candidate
+            candidate = if (candidate == Int.MAX_VALUE) 10_000 else candidate + 1
+        }
+    }
+
+    fun onNativeNotificationRemoved(id: Int) {
+        if (id == PERMANENT_ID) return
+        val key = activeKeysById.remove(id) ?: return
+        activeIds.remove(key, id)
+    }
 
     fun isXiaomiDevice(): Boolean {
         val manufacturer = Build.MANUFACTURER.lowercase()
@@ -186,6 +205,7 @@ object NuviaHyperIslandController {
 
     fun dismiss(context: Context, key: String) {
         val id = activeIds.remove(key) ?: return
+        activeKeysById.remove(id, key)
         runCatching { NotificationManagerCompat.from(context).cancel(id) }
     }
 
@@ -195,6 +215,7 @@ object NuviaHyperIslandController {
             runCatching { NotificationManagerCompat.from(app).cancel(id) }
         }
         activeIds.clear()
+        activeKeysById.clear()
 
         // Quiet shade copies are posted with this private tag prefix.
         runCatching {
@@ -215,6 +236,7 @@ object NuviaHyperIslandController {
             runCatching { NotificationManagerCompat.from(context).cancel(id) }
         }
         activeIds.clear()
+        activeKeysById.clear()
         NotificationManagerCompat.from(context).cancel(PERMANENT_ID)
     }
 
@@ -294,13 +316,7 @@ object NuviaHyperIslandController {
     ): Boolean {
         ensureChannel(context)
         if (!canPostToIslandChannel(context)) return false
-        val id = (key.hashCode() and 0x7fffffff).let {
-            when (it) {
-                0 -> 10000
-                PERMANENT_ID -> 10001
-                else -> it
-            }
-        }
+        val id = reserveNotificationId(key)
         val posted = runCatching {
             val icon = context.packageManager.getApplicationIcon(packageName)
             val iconBitmap = drawableBitmap(icon)
@@ -346,7 +362,12 @@ object NuviaHyperIslandController {
             NotificationManagerCompat.from(context).notify(id, notification)
             true
         }.getOrDefault(false)
-        if (posted) activeIds[key] = id
+        if (posted) {
+            activeIds[key] = id
+        } else {
+            activeKeysById.remove(id, key)
+            activeIds.remove(key, id)
+        }
         return posted
     }
 
