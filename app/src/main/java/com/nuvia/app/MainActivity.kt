@@ -100,7 +100,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.nuvia.app.data.NotificationRecord
 import com.nuvia.app.data.NuviaStore
-import com.nuvia.app.notifications.IslandOverlayController
+import com.nuvia.app.notifications.NuviaHyperIslandController
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -636,7 +636,7 @@ private fun SettingsScreen(
             PermissionRow(
                 icon = Icons.Rounded.Layers,
                 title = "Display over other apps",
-                description = "Show the floating island above your apps.",
+                description = "Fallback only when native HyperOS island support is unavailable.",
                 status = if (overlayEnabled) "Allowed" else "Optional",
                 complete = overlayEnabled,
                 onClick = {
@@ -647,30 +647,41 @@ private fun SettingsScreen(
                     }
                 }
             )
-            if (overlayEnabled) {
+            if (NuviaHyperIslandController.isXiaomiDevice()) {
+                Divider(color = Line.copy(alpha = 0.7f))
+                val nativeReady = NuviaHyperIslandController.isNativeReady(context)
+                PermissionRow(
+                    icon = Icons.Rounded.Bolt,
+                    title = "HyperOS Focus notifications",
+                    description = "Required for Xiaomi's native HyperIsland presentation. Enable Focus notifications and Show in status bar for Nuvia.",
+                    status = if (nativeReady) "Ready" else "Needs setup",
+                    complete = nativeReady,
+                    onClick = {
+                        runCatching {
+                            context.startActivity(
+                                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                    .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                        }
+                    }
+                )
+            }
+            if (overlayEnabled || (NuviaHyperIslandController.isXiaomiDevice() && NuviaHyperIslandController.isNativeReady(context))) {
                 OutlinedButton(
                     onClick = {
-                        val launchIntent = Intent(context, MainActivity::class.java)
-                        val contentIntent = PendingIntent.getActivity(
+                        NuviaHyperIslandController.showTest(
                             context,
-                            9101,
-                            launchIntent,
-                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                        )
-                        IslandOverlayController.show(
-                            context = context,
-                            appName = "Nuvia",
-                            title = "Your island is working",
-                            message = "Tap this preview to return to Nuvia.",
-                            contentIntent = contentIntent
+                            NuviaStore.managedPackages(context).firstOrNull()
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp)
+                    shape = RoundedCornerShape(14.dp),
+                    enabled = selectedApps > 0
                 ) {
                     Icon(Icons.Rounded.Waves, null, modifier = Modifier.size(17.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Test floating island")
+                    Text("Test with selected app icon")
                 }
             }
             if (Build.VERSION.SDK_INT >= 33) {
@@ -692,20 +703,21 @@ private fun SettingsScreen(
             SettingSwitch(
                 icon = Icons.Rounded.Waves,
                 title = "Floating island",
-                description = "Show a compact alert for selected apps. This works independently of notification replacement.",
+                description = "Keep a centred island visible. Incoming alerts expand with the source app's own icon, not Nuvia's.",
                 checked = islandEnabled,
                 enabled = true,
                 onCheckedChange = {
                     islandEnabled = it
-                    NuviaStore.setIslandEnabled(context, it)
+                    NuviaHyperIslandController.setEnabled(context, it)
                 }
             )
-            if (islandEnabled && (!overlayEnabled || selectedApps == 0)) {
+            if (islandEnabled && (!overlayEnabled || selectedApps == 0) &&
+                !(NuviaHyperIslandController.isXiaomiDevice() && NuviaHyperIslandController.isNativeReady(context))
+            ) {
                 Text(
-                    text = if (!overlayEnabled) {
-                        "Allow Display over other apps to show the island."
-                    } else {
-                        "Choose at least one app in the Apps tab."
+                    text = when {
+                        selectedApps == 0 -> "Choose at least one app in the Apps tab."
+                        else -> "Allow Display over other apps, or enable HyperOS Focus notifications for native rendering."
                     },
                     color = Color(0xFFF4B860),
                     fontSize = 11.sp,
