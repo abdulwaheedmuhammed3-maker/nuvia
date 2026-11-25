@@ -25,7 +25,7 @@ enum class InstallerResult { OPENED, PERMISSION_REQUIRED }
 
 /** Accept only stable release tags in the exact vMAJOR.MINOR.PATCH form. */
 internal fun stableVersionFromTag(tag: String): String? {
-    val match = Regex("^v(\\d+)\\.(\\d+)\\.(\\d+)$").matchEntire(tag) ?: return null
+    val match = Regex("^v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$").matchEntire(tag) ?: return null
     return match.groupValues.drop(1).joinToString(".")
 }
 
