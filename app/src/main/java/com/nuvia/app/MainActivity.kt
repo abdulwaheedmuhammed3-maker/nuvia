@@ -154,6 +154,7 @@ private fun NuviaRoot() {
     var listenerEnabled by remember { mutableStateOf(isNotificationListenerEnabled(context)) }
     var overlayEnabled by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
     var notificationsAllowed by remember { mutableStateOf(NuviaHyperIslandController.canPostNotifications(context)) }
+    var quietCopyChannelEnabled by remember { mutableStateOf(NuviaNotificationListener.canPostQuietCopies(context)) }
     var availableUpdate by remember { mutableStateOf<NuviaRelease?>(null) }
 
     LaunchedEffect(Unit) {
@@ -169,6 +170,7 @@ private fun NuviaRoot() {
             listenerEnabled = isNotificationListenerEnabled(context)
             overlayEnabled = Settings.canDrawOverlays(context)
             notificationsAllowed = NuviaHyperIslandController.canPostNotifications(context)
+            quietCopyChannelEnabled = NuviaNotificationListener.canPostQuietCopies(context)
             delay(1200)
         }
     }
@@ -223,6 +225,7 @@ private fun NuviaRoot() {
                         listenerEnabled = listenerEnabled,
                         overlayEnabled = overlayEnabled,
                         notificationsAllowed = notificationsAllowed,
+                        quietCopyChannelEnabled = quietCopyChannelEnabled,
                         onRefreshPermissions = {
                             listenerEnabled = isNotificationListenerEnabled(context)
                             overlayEnabled = Settings.canDrawOverlays(context)
@@ -615,6 +618,7 @@ private fun SettingsScreen(
     listenerEnabled: Boolean,
     overlayEnabled: Boolean,
     notificationsAllowed: Boolean,
+    quietCopyChannelEnabled: Boolean,
     onRefreshPermissions: () -> Unit
 ) {
     val context = LocalContext.current
@@ -657,6 +661,7 @@ private fun SettingsScreen(
     val hasPostPermission = Build.VERSION.SDK_INT < 33 ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
     val canPostNotifications = hasPostPermission && notificationsAllowed
+    val canPostQuietCopy = canPostNotifications && quietCopyChannelEnabled
     val selectedApps = NuviaStore.managedPackages(context).size
     val postPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         showPermissionHint = !granted
@@ -825,27 +830,31 @@ private fun SettingsScreen(
                     "When island mode is off, replace selected apps' original alerts with quiet copies in the notification shade."
                 },
                 checked = islandEnabled || replacement,
-                enabled = listenerEnabled && canPostNotifications && selectedApps > 0 && !islandEnabled,
+                enabled = listenerEnabled && canPostQuietCopy && selectedApps > 0 && !islandEnabled,
                 onCheckedChange = { checked ->
                     replacement = checked
                     NuviaStore.setReplacementEnabled(context, checked)
                 }
             )
-            if (islandEnabled && !canPostNotifications) {
+            if (islandEnabled && !canPostQuietCopy) {
                 Text(
-                    text = "Allow Nuvia to post notifications so it can keep a quiet copy in your shade. Without this permission, the original app pop-up cannot be suppressed.",
+                    text = when {
+                        !canPostNotifications -> "Allow Nuvia notifications in Android settings. Until then, original app alerts remain untouched."
+                        else -> "Set Nuvia's quiet-copy channel to Low or Min importance. Otherwise, the original app alert remains untouched."
+                    },
                     color = Color(0xFFF4B860),
                     fontSize = 11.sp,
                     lineHeight = 15.sp,
                     modifier = Modifier.padding(start = 44.dp, bottom = 4.dp)
                 )
             }
-            if (!listenerEnabled || !canPostNotifications || selectedApps == 0) {
+            if (!listenerEnabled || !canPostQuietCopy || selectedApps == 0) {
                 Text(
                     text = when {
                         !listenerEnabled -> "Grant notification access to enable replacement."
                         !hasPostPermission -> "Allow Nuvia to post notifications first."
                         !notificationsAllowed -> "Enable Nuvia notifications in Android app settings."
+                        !quietCopyChannelEnabled -> "Set Nuvia's quiet-copy notification channel to Low or Min importance in Android settings."
                         else -> "Choose at least one app in the Apps tab."
                     },
                     color = Color(0xFFF4B860),
