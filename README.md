@@ -37,6 +37,7 @@ When the floating island is disabled, **Quiet original notifications** can be en
 - Ignores app/user cancellation events when dismissing mapped native island notifications, while intentionally ignoring listener-cancel events used by Nuvia's replacement flow.
 - Redacts existing saved notification text and clears active Nuvia shade/island cards when the hide-content privacy setting is enabled.
 - Releases in-memory native island ID mappings when Nuvia's timed notification is removed, avoiding stale mappings during long-running sessions.
+- Disables Android app backup for the current build because local notification history can contain private message text; this also means preferences/history won't automatically migrate through Android backup.
 - Adds signing-keystore patterns to `.gitignore`.
 
 ## Settings scrolling
@@ -63,6 +64,10 @@ For selected apps, when the floating island can render, Nuvia now replaces the s
 - On supported Xiaomi/POCO/Redmi HyperOS devices, publishes native Focus Notifications with the source app's own icon and a permanent empty island when idle. On other Android devices, uses a centred persistent capsule overlay as a fallback.
 - Preserves ongoing notifications, foreground-service notifications, group summaries, calls, alarms, media/transport, navigation and system-category notifications.
 - Supports a local privacy option that redacts saved inbox content, clears currently visible Nuvia copies/island cards, and hides content in subsequent Nuvia previews and replacements.
+
+### Local notification data and backups
+
+Nuvia currently stores up to 100 notification summaries and app settings in local SharedPreferences. Because these summaries may contain private message text, Android backup is disabled in this build. App settings and history therefore will not be automatically restored by Android device backup; a future explicit encrypted export/import flow is needed for user-controlled migration.
 
 ## In-app updates and release signing
 
