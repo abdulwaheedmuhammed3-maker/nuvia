@@ -2,7 +2,7 @@
 
 **Nuvia** is an early native Android notification companion built with Kotlin and Jetpack Compose. The first foundation includes a modern dark dashboard, a notification inbox, per-app selection, permission setup, an in-app Dynamic Island preview, a floating overlay preview, and a notification replacement service.
 
-> Project version: 0.1.1.
+> Project version: 0.1.2.
 
 Project status: source foundation created. This is not a tested APK yet. The current workspace does not have the Android SDK or Android Gradle tooling installed, so a device build and runtime verification still need to happen in Android Studio or CI.
 
@@ -25,7 +25,7 @@ The project targets Android 16 (API 36) and supports Android 8.0 (API 26) and la
 5. Open **Apps** and select which apps Nuvia is allowed to manage.
 6. Enable **Replace original notifications** only after testing the experience with non-critical apps first.
 
-Replacement is deliberately OFF by default. Nuvia does not automatically dismiss source notifications on first install.
+Floating island display is enabled by default for selected apps. Original-notification replacement is deliberately OFF by default; Nuvia does not automatically dismiss source notifications on first install.
 
 ## What the first foundation does
 
@@ -34,7 +34,7 @@ Replacement is deliberately OFF by default. Nuvia does not automatically dismiss
 - Lets the user select launcher apps individually.
 - When replacement is explicitly enabled for a selected app, posts a Nuvia notification using the source notification's content intent and up to three original actions.
 - Copies Android `RemoteInput` metadata for supported inline-reply actions, then asks Android to dismiss the source notification after the replacement notification has been posted.
-- Shows a short floating island-style overlay when overlay permission is granted.
+- Shows a short floating island-style overlay for selected apps when overlay permission is granted, independently of original-notification replacement.
 - Preserves ongoing notifications, foreground-service notifications, group summaries, calls, alarms, media/transport, navigation and system-category notifications.
 - Supports a local privacy option that hides message content in Nuvia's inbox and replacement display.
 
