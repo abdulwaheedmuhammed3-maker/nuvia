@@ -198,7 +198,23 @@ class NuviaNotificationListener : NotificationListenerService() {
                 }
                 actionBuilder.setAllowGeneratedReplies(action.allowGeneratedReplies)
                 if (Build.VERSION.SDK_INT >= 28) {
-                    actionBuilder.setSemanticAction(action.semanticAction)
+                    val semanticAction = when (action.semanticAction) {
+                        Notification.Action.SEMANTIC_ACTION_REPLY -> NotificationCompat.Action.SEMANTIC_ACTION_REPLY
+                        Notification.Action.SEMANTIC_ACTION_MARK_AS_READ -> NotificationCompat.Action.SEMANTIC_ACTION_MARK_AS_READ
+                        Notification.Action.SEMANTIC_ACTION_MARK_AS_UNREAD -> NotificationCompat.Action.SEMANTIC_ACTION_MARK_AS_UNREAD
+                        Notification.Action.SEMANTIC_ACTION_DELETE -> NotificationCompat.Action.SEMANTIC_ACTION_DELETE
+                        Notification.Action.SEMANTIC_ACTION_ARCHIVE -> NotificationCompat.Action.SEMANTIC_ACTION_ARCHIVE
+                        Notification.Action.SEMANTIC_ACTION_MUTE -> NotificationCompat.Action.SEMANTIC_ACTION_MUTE
+                        Notification.Action.SEMANTIC_ACTION_UNMUTE -> NotificationCompat.Action.SEMANTIC_ACTION_UNMUTE
+                        Notification.Action.SEMANTIC_ACTION_THUMBS_UP -> NotificationCompat.Action.SEMANTIC_ACTION_THUMBS_UP
+                        Notification.Action.SEMANTIC_ACTION_THUMBS_DOWN -> NotificationCompat.Action.SEMANTIC_ACTION_THUMBS_DOWN
+                        Notification.Action.SEMANTIC_ACTION_CALL -> NotificationCompat.Action.SEMANTIC_ACTION_CALL
+                        Notification.Action.SEMANTIC_ACTION_PLAY -> NotificationCompat.Action.SEMANTIC_ACTION_PLAY
+                        Notification.Action.SEMANTIC_ACTION_PAUSE -> NotificationCompat.Action.SEMANTIC_ACTION_PAUSE
+                        Notification.Action.SEMANTIC_ACTION_STOP -> NotificationCompat.Action.SEMANTIC_ACTION_STOP
+                        else -> NotificationCompat.Action.SEMANTIC_ACTION_NONE
+                    }
+                    actionBuilder.setSemanticAction(semanticAction)
                 }
                 actionBuilder.addExtras(action.extras)
                 builder.addAction(actionBuilder.build())
@@ -230,11 +246,16 @@ class NuviaNotificationListener : NotificationListenerService() {
             .setAllowFreeFormInput(allowFreeFormInput)
             .addExtras(extras)
         if (Build.VERSION.SDK_INT >= 29) {
-            builder.setEditChoicesBeforeSending(editChoicesBeforeSending)
+            val editChoices = when (editChoicesBeforeSending) {
+                AndroidRemoteInput.EDIT_CHOICES_BEFORE_SENDING_ENABLED ->
+                    androidx.core.app.RemoteInput.EDIT_CHOICES_BEFORE_SENDING_ENABLED
+                AndroidRemoteInput.EDIT_CHOICES_BEFORE_SENDING_DISABLED ->
+                    androidx.core.app.RemoteInput.EDIT_CHOICES_BEFORE_SENDING_DISABLED
+                else -> androidx.core.app.RemoteInput.EDIT_CHOICES_BEFORE_SENDING_AUTO
+            }
+            builder.setEditChoicesBeforeSending(editChoices)
         }
-        if (Build.VERSION.SDK_INT >= 26) {
-            allowedDataTypes?.forEach { builder.setAllowDataType(it, true) }
-        }
+        allowedDataTypes?.forEach { builder.setAllowDataType(it, true) }
         return builder.build()
     }
 
