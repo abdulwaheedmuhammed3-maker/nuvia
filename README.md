@@ -35,6 +35,8 @@ When the floating island is disabled, **Quiet original notifications** can be en
 - Does not create an extra island card for notifications deliberately preserved (calls, alarms, ongoing/system alerts).
 - Returns a successful fallback-island result only after the overlay is attached and expanded, so a failed overlay does not cause Nuvia to dismiss the original alert.
 - Ignores app/user cancellation events when dismissing mapped native island notifications, while intentionally ignoring listener-cancel events used by Nuvia's replacement flow.
+- Redacts existing saved notification text and clears active Nuvia shade/island cards when the hide-content privacy setting is enabled.
+- Releases in-memory native island ID mappings when Nuvia's timed notification is removed, avoiding stale mappings during long-running sessions.
 - Adds signing-keystore patterns to `.gitignore`.
 
 ## Settings scrolling
