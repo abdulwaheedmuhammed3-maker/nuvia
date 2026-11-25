@@ -158,6 +158,14 @@ private fun NuviaRoot() {
     var notifications by remember { mutableStateOf(NuviaStore.getNotifications(context)) }
     var listenerEnabled by remember { mutableStateOf(isNotificationListenerEnabled(context)) }
     var overlayEnabled by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
+    var availableUpdate by remember { mutableStateOf<NuviaRelease?>(null) }
+
+    LaunchedEffect(Unit) {
+        delay(900)
+        availableUpdate = withContext(Dispatchers.IO) {
+            runCatching { NuviaUpdateManager.checkForUpdate(context) }.getOrNull()
+        }
+    }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -206,6 +214,7 @@ private fun NuviaRoot() {
                 when (page) {
                     Destination.HOME -> HomeScreen(
                         notifications = notifications,
+                        availableUpdate = availableUpdate,
                         listenerEnabled = listenerEnabled,
                         overlayEnabled = overlayEnabled,
                         onOpenSettings = { destination = Destination.SETTINGS },
@@ -276,6 +285,7 @@ private fun BrandHeader(eyebrow: String? = null) {
 @Composable
 private fun HomeScreen(
     notifications: List<NotificationRecord>,
+    availableUpdate: NuviaRelease?,
     listenerEnabled: Boolean,
     overlayEnabled: Boolean,
     onOpenSettings: () -> Unit,
@@ -289,6 +299,27 @@ private fun HomeScreen(
         }
 
         IslandPreviewCard()
+
+        availableUpdate?.let { release ->
+            Card(
+                colors = CardDefaults.cardColors(containerColor = SurfaceOne),
+                shape = RoundedCornerShape(20.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Teal.copy(alpha = 0.55f))
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(15.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(11.dp)
+                ) {
+                    Icon(Icons.Rounded.Bolt, null, tint = Teal, modifier = Modifier.size(21.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("Nuvia ${release.version} is available", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Open Settings to download and install the update.", color = Muted, fontSize = 10.sp, lineHeight = 14.sp)
+                    }
+                    TextButton(onClick = onOpenSettings) { Text("View", color = Teal) }
+                }
+            }
+        }
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             MetricCard(
