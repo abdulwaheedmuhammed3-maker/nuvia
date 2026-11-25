@@ -10,6 +10,7 @@ object NuviaStore {
     private const val RECORDS = "notification_records"
     private const val REPLACE_ORIGINALS = "replace_originals"
     private const val HIDE_CONTENT = "hide_content"
+    private const val ISLAND_ENABLED = "floating_island_enabled"
     private const val MANAGED_PACKAGES = "managed_packages"
 
     private fun prefs(context: Context): SharedPreferences =
@@ -71,6 +72,12 @@ object NuviaStore {
         prefs(context).edit().putBoolean(REPLACE_ORIGINALS, enabled).apply()
     }
 
+    fun isIslandEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(ISLAND_ENABLED, true)
+
+    fun setIslandEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(ISLAND_ENABLED, enabled).apply()
+    }
     fun isHideContentEnabled(context: Context): Boolean =
         prefs(context).getBoolean(HIDE_CONTENT, false)
 
