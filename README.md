@@ -29,6 +29,7 @@ When the floating island is disabled, **Quiet original notifications** can be en
 ## Audit fixes in 0.1.10
 
 - Rebuilt the Inbox and Apps screens as single scrollable LazyColumn layouts to prevent nested/unbounded lists and clipped content on smaller displays.
+- Prevents island pop-ups from being emitted when the quiet-copy channel is blocked or not safely configured, leaving the source notification untouched instead of creating a duplicate pop-up.
 - The Apps screen now initializes selected packages against the installed launcher-app list, avoiding stale package selections in its UI.
 
 ## Full audit corrections in 0.1.9
