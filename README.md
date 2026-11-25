@@ -56,11 +56,11 @@ For selected apps, when the floating island can render, Nuvia now replaces the s
 - Captures notifications delivered to Android's `NotificationListenerService`.
 - Stores a local, bounded history of up to 100 notification summaries.
 - Lets the user select launcher apps individually.
-- When replacement is explicitly enabled for a selected app, posts a Nuvia notification using the source notification's content intent and up to three original actions.
+- When the floating island is enabled for a selected app, posts a quiet Nuvia shade copy using the source notification's content intent and up to three original actions, then dismisses the source alert only after the copy is confirmed active. The separate replacement switch can also be used while the island is off.
 - Copies Android `RemoteInput` metadata for supported inline-reply actions, then asks Android to dismiss the source notification after the replacement notification has been posted.
 - On supported Xiaomi/POCO/Redmi HyperOS devices, publishes native Focus Notifications with the source app's own icon and a permanent empty island when idle. On other Android devices, uses a centred persistent capsule overlay as a fallback.
 - Preserves ongoing notifications, foreground-service notifications, group summaries, calls, alarms, media/transport, navigation and system-category notifications.
-- Supports a local privacy option that hides message content in Nuvia's inbox and replacement display.
+- Supports a local privacy option that redacts saved inbox content, clears currently visible Nuvia copies/island cards, and hides content in subsequent Nuvia previews and replacements.
 
 ## In-app updates and release signing
 
