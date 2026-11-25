@@ -66,19 +66,26 @@ class NuviaNotificationListener : NotificationListenerService() {
             )
         )
 
-        val shouldReplace = NuviaStore.isReplacementEnabled(this) &&
-            NuviaStore.isPackageManaged(this, sbn.packageName)
+        val isManagedApp = NuviaStore.isPackageManaged(this, sbn.packageName)
+        val shouldReplace = NuviaStore.isReplacementEnabled(this) && isManagedApp
 
-        if (shouldReplace && publishReplacement(sbn, appName, title, message)) {
-            if (Settings.canDrawOverlays(this)) {
-                IslandOverlayController.show(
-                    context = this,
-                    appName = appName,
-                    title = if (hideContent) "New notification" else title.ifBlank { appName },
-                    message = if (hideContent) "Content hidden by Nuvia" else message,
-                    contentIntent = notification.contentIntent
-                )
-            }
+        // Replacing the system notification and showing the floating island are
+        // independent features. A failed/missing replacement must not suppress the island.
+        if (shouldReplace) {
+            publishReplacement(sbn, appName, title, message)
+        }
+
+        if (isManagedApp &&
+            NuviaStore.isIslandEnabled(this) &&
+            Settings.canDrawOverlays(this)
+        ) {
+            IslandOverlayController.show(
+                context = this,
+                appName = appName,
+                title = if (hideContent) "New notification" else title.ifBlank { appName },
+                message = if (hideContent) "Content hidden by Nuvia" else message,
+                contentIntent = notification.contentIntent
+            )
         }
     }
 
@@ -208,7 +215,7 @@ class NuviaNotificationListener : NotificationListenerService() {
     }
 }
 
-private object IslandOverlayController {
+object IslandOverlayController {
     private val mainHandler = Handler(Looper.getMainLooper())
     private var windowManager: WindowManager? = null
     private var currentView: View? = null
@@ -298,8 +305,21 @@ private object IslandOverlayController {
                     dismiss()
                 }
 
+                val screenWidth = if (Build.VERSION.SDK_INT >= 30) {
+                    wm.currentWindowMetrics.bounds.width()
+                } else {
+                    context.resources.displayMetrics.widthPixels
+                }
+                val overlayWidth = (screenWidth - dp(32)).coerceAtMost(dp(360)).coerceAtLeast(dp(240))
+                val statusBarResource = context.resources.getIdentifier("status_bar_height", "dimen", "android")
+                val statusBarHeight = if (statusBarResource > 0) {
+                    context.resources.getDimensionPixelSize(statusBarResource)
+                } else {
+                    dp(24)
+                }
+
                 val params = WindowManager.LayoutParams(
-                    dp(300),
+                    overlayWidth,
                     WindowManager.LayoutParams.WRAP_CONTENT,
                     WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                     WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -308,15 +328,22 @@ private object IslandOverlayController {
                     PixelFormat.TRANSLUCENT
                 ).apply {
                     gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-                    y = dp(34)
+                    y = statusBarHeight + dp(8)
                     if (Build.VERSION.SDK_INT >= 28) {
                         layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
                     }
                 }
 
+                root.alpha = 0f
+                root.translationY = -dp(10).toFloat()
                 wm.addView(root, params)
                 currentView = root
-                removeTask = Runnable { dismiss() }.also { mainHandler.postDelayed(it, 4_800L) }
+                root.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(220L)
+                    .start()
+                removeTask = Runnable { dismiss() }.also { mainHandler.postDelayed(it, 5_200L) }
             } catch (_: Exception) {
                 dismiss()
             }
@@ -325,10 +352,22 @@ private object IslandOverlayController {
 
     private fun dismiss() {
         mainHandler.post {
-            currentView?.let { view -> runCatching { windowManager?.removeView(view) } }
-            currentView = null
             removeTask?.let(mainHandler::removeCallbacks)
             removeTask = null
+
+            val view = currentView
+            currentView = null
+            if (view != null) {
+                view.animate().cancel()
+                view.animate()
+                    .alpha(0f)
+                    .translationY(-8f * view.resources.displayMetrics.density)
+                    .setDuration(150L)
+                    .withEndAction {
+                        runCatching { windowManager?.removeView(view) }
+                    }
+                    .start()
+            }
         }
     }
 }
