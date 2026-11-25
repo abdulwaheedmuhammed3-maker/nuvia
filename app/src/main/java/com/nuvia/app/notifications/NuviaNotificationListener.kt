@@ -8,6 +8,7 @@ import android.app.RemoteInput as AndroidRemoteInput
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.PixelFormat
+import androidx.core.graphics.drawable.toBitmap
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Handler
@@ -148,9 +149,16 @@ class NuviaNotificationListener : NotificationListenerService() {
             val hideContent = NuviaStore.isHideContentEnabled(this)
             val visibleTitle = if (hideContent) "New notification" else title.ifBlank { appName }
             val visibleMessage = if (hideContent) "Content hidden by Nuvia" else message
+            // The shade notification is technically posted by Nuvia, but use the source
+            // application's launcher icon as its large/avatar icon so each card is identifiable.
+            val sourceAppLargeIcon = runCatching {
+                packageManager.getApplicationIcon(sbn.packageName).toBitmap(width = 96, height = 96)
+            }.getOrNull()
 
             val builder = NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_nuvia_stat)
+                .setLargeIcon(sourceAppLargeIcon)
+                .setSubText(appName)
                 .setContentTitle(visibleTitle)
                 .setContentText(visibleMessage)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(visibleMessage))
