@@ -74,10 +74,12 @@ class NuviaNotificationListener : NotificationListenerService() {
 
         val isManagedApp = NuviaStore.isPackageManaged(this, sbn.packageName)
         val islandEnabled = NuviaStore.isIslandEnabled(this) && isManagedApp
-        // In island mode, keep only one interrupting surface: the island. The source
-        // notification is mirrored silently into the shade after its content/actions are copied.
-        val shouldReplace = (islandEnabled || NuviaStore.isReplacementEnabled(this)) &&
-            isManagedApp && !preserveOriginal
+        val islandSurfaceReady = NuviaHyperIslandController.isNativeReady(this) ||
+            Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this)
+        // In island mode, replace the source only when the island can actually render.
+        // Its quiet copy stays in the shade; the island is the only interrupting surface.
+        val shouldReplace = ((islandEnabled && islandSurfaceReady) ||
+            NuviaStore.isReplacementEnabled(this)) && isManagedApp && !preserveOriginal
 
         // Native Xiaomi HyperIsland is used when available. Android overlay is only a fallback.
         if (islandEnabled) {
