@@ -116,13 +116,13 @@ object NuviaHyperIslandController {
         appName: String,
         title: String,
         message: String
-    ) {
+    ): Boolean {
         val app = context.applicationContext
-        if (!NuviaStore.isIslandEnabled(app)) return
+        if (!NuviaStore.isIslandEnabled(app)) return false
 
         if (isNativeReady(app)) {
             IslandOverlayController.hide()
-            postNativeNotification(
+            return postNativeNotification(
                 context = app,
                 key = sbn.key,
                 packageName = sbn.packageName,
@@ -141,7 +141,9 @@ object NuviaHyperIslandController {
                 appIcon = icon,
                 contentIntent = sbn.notification.contentIntent
             )
+            return true
         }
+        return false
     }
 
     fun showTest(context: Context, packageName: String?) {
@@ -260,7 +262,7 @@ object NuviaHyperIslandController {
         title: String,
         message: String,
         contentIntent: PendingIntent?
-    ) {
+    ): Boolean {
         ensureChannel(context)
         val id = (key.hashCode() and 0x7fffffff).let {
             when (it) {
@@ -269,9 +271,7 @@ object NuviaHyperIslandController {
                 else -> it
             }
         }
-        activeIds[key] = id
-
-        runCatching {
+        val posted = runCatching {
             val icon = context.packageManager.getApplicationIcon(packageName)
             val iconBitmap = drawableBitmap(icon)
             val picKey = "nuvia_app_icon"
@@ -314,7 +314,10 @@ object NuviaHyperIslandController {
                 .build()
             notification.extras.putString("miui.focus.param", builder.buildJsonParam())
             NotificationManagerCompat.from(context).notify(id, notification)
-        }
+            true
+        }.getOrDefault(false)
+        if (posted) activeIds[key] = id
+        return posted
     }
 
     private fun drawableBitmap(drawable: Drawable): Bitmap {
