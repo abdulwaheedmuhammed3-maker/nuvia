@@ -174,6 +174,9 @@ private fun NuviaRoot() {
     // the process and repeatedly recomposes the root screen.
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            // Reconcile the persistent native/fallback island whenever the app returns
+            // from Android settings so revoked or restored permissions are applied.
+            NuviaHyperIslandController.refreshPermanent(context)
             while (true) {
                 notifications = NuviaStore.getNotifications(context)
                 listenerEnabled = isNotificationListenerEnabled(context)
