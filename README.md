@@ -4,13 +4,13 @@
 
 > Project version: 0.1.8.
 
-Project status: GitHub Actions builds the debug APK on pushes to main. Device-level behaviour still needs verification on the target Android/HyperOS phone.
+Project status: GitHub Actions builds and tests the debug APK on pushes to main, and builds signed release APKs for version-matched published GitHub Releases. Device-level behaviour still needs verification on the target Android/HyperOS phone.
 
 ## Open the project
 
 1. Extract this folder on a computer with Android Studio installed.
 2. Open the `Nuvia` folder in Android Studio.
-3. Use JDK 17 or newer and Android SDK Platform 36.
+3. Use JDK 17 or newer and Android SDK Platform 37.2.
 4. Install Gradle 9.6.0. This source archive includes the wrapper properties but omits the generated wrapper JAR and launch scripts; after installing Gradle, run `gradle wrapper --gradle-version 9.6.0` from the project root.
 5. Sync the project, then run the `app` configuration on an Android 8.0+ device.
 
@@ -22,8 +22,7 @@ The project targets Android 16 (API 36) and supports Android 8.0 (API 26) and la
 2. Grant **Notification access**. This is required to read notifications from other apps.
 3. Grant **Display over other apps** for the fallback capsule on devices without native HyperOS support.
 4. On Xiaomi/POCO/Redmi HyperOS, also enable Nuvia's **Focus notifications** and **Show in status bar** permissions for native HyperIsland rendering. On Android 13+, allow Nuvia to post notifications.
-5. Open **Apps** and select which apps Nuvia is allowed to manage.
-6. Open **Apps** and choose the apps you want Nuvia to manage. When the floating island is enabled and successfully displays an alert, Nuvia automatically dismisses that selected app's original pop-up after posting a quiet copy in the notification shade. Calls, alarms, navigation, ongoing service alerts, group summaries and system notifications are preserved.
+5. Open **Apps** and choose which apps Nuvia should manage. Calls, alarms, navigation, ongoing service alerts, group summaries and system notifications are preserved.
 
 When the floating island is disabled, **Quiet original notifications** can be enabled separately to keep selected app alerts in the shade without a second pop-up.
 
