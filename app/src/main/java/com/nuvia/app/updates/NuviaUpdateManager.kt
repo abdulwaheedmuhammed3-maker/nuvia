@@ -184,7 +184,7 @@ object NuviaUpdateManager {
         if (!temporary.renameTo(destination)) {
             try {
                 temporary.copyTo(destination, overwrite = false)
-                if (!temporary.delete()) temporary.deleteOnExit()
+                temporary.delete()
             } catch (error: Exception) {
                 destination.delete()
                 temporary.delete()
