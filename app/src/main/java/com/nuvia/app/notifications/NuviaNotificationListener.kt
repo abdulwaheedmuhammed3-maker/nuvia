@@ -73,10 +73,14 @@ class NuviaNotificationListener : NotificationListenerService() {
         }
 
         val isManagedApp = NuviaStore.isPackageManaged(this, sbn.packageName)
-        val shouldReplace = NuviaStore.isReplacementEnabled(this) && isManagedApp && !preserveOriginal
+        val islandEnabled = NuviaStore.isIslandEnabled(this) && isManagedApp
+        // In island mode, keep only one interrupting surface: the island. The source
+        // notification is mirrored silently into the shade after its content/actions are copied.
+        val shouldReplace = (islandEnabled || NuviaStore.isReplacementEnabled(this)) &&
+            isManagedApp && !preserveOriginal
 
         // Native Xiaomi HyperIsland is used when available. Android overlay is only a fallback.
-        if (isManagedApp && NuviaStore.isIslandEnabled(this)) {
+        if (islandEnabled) {
             NuviaHyperIslandController.showNotification(
                 context = this,
                 sbn = sbn,
@@ -154,7 +158,8 @@ class NuviaNotificationListener : NotificationListenerService() {
                 .setShowWhen(true)
                 .setAutoCancel(true)
                 .setOnlyAlertOnce(true)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setSilent(true)
 
             original.actions?.take(3)?.forEach { action ->
                 val actionIcon = action.icon.takeIf { it != 0 } ?: R.drawable.ic_nuvia_stat
@@ -208,10 +213,12 @@ class NuviaNotificationListener : NotificationListenerService() {
             if (existing == null) {
                 val channel = NotificationChannel(
                     CHANNEL_ID,
-                    "Nuvia replacements",
-                    NotificationManager.IMPORTANCE_HIGH
+                    "Nuvia quiet copies",
+                    NotificationManager.IMPORTANCE_LOW
                 ).apply {
-                    description = "Notifications safely mirrored by Nuvia"
+                    description = "Quiet copies retained in the notification shade while Nuvia's island handles pop-up alerts"
+                    setSound(null, null)
+                    enableVibration(false)
                     setShowBadge(true)
                 }
                 manager.createNotificationChannel(channel)
@@ -227,6 +234,6 @@ class NuviaNotificationListener : NotificationListenerService() {
     }
 
     companion object {
-        private const val CHANNEL_ID = "nuvia_replacements_v1"
+        private const val CHANNEL_ID = "nuvia_replacements_v2"
     }
 }
