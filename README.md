@@ -2,7 +2,7 @@
 
 **Nuvia** is an early native Android notification companion built with Kotlin and Jetpack Compose. The first foundation includes a modern dark dashboard, a notification inbox, per-app selection, permission setup, an in-app Dynamic Island preview, a floating overlay preview, and a notification replacement service.
 
-> Project version: 0.1.9.
+> Project version: 0.1.10.
 
 Project status: GitHub Actions builds and tests the debug APK on pushes to main, and builds signed release APKs for version-matched published GitHub Releases. Device-level behaviour still needs verification on the target Android/HyperOS phone.
 
@@ -25,6 +25,11 @@ The project targets Android 16 (API 36) and supports Android 8.0 (API 26) and la
 5. Open **Apps** and choose which apps Nuvia should manage. Calls, alarms, navigation, ongoing service alerts, group summaries and system notifications are preserved.
 
 When the floating island is disabled, **Quiet original notifications** can be enabled separately to keep selected app alerts in the shade without a second pop-up.
+
+## Audit fixes in 0.1.10
+
+- Rebuilt the Inbox and Apps screens as single scrollable LazyColumn layouts to prevent nested/unbounded lists and clipped content on smaller displays.
+- The Apps screen now initializes selected packages against the installed launcher-app list, avoiding stale package selections in its UI.
 
 ## Full audit corrections in 0.1.9
 
