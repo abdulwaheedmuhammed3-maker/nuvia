@@ -11,11 +11,13 @@ import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 
 data class NuviaRelease(
     val version: String,
     val notes: String,
-    val apkUrl: String
+    val apkUrl: String,
+    val checksumUrl: String
 )
 
 enum class InstallerResult { OPENED, PERMISSION_REQUIRED }
@@ -49,45 +51,101 @@ object NuviaUpdateManager {
 
             val assets = json.optJSONArray("assets") ?: throw IOException("The release has no APK asset.")
             var apkUrl = ""
+            var checksumUrl = ""
             for (index in 0 until assets.length()) {
                 val asset = assets.optJSONObject(index) ?: continue
                 val name = asset.optString("name")
-                if (name.endsWith(".apk", ignoreCase = true)) {
-                    apkUrl = asset.optString("browser_download_url")
-                    if (apkUrl.isNotBlank()) break
+                val assetUrl = asset.optString("browser_download_url")
+                if (name.endsWith(".apk.sha256", ignoreCase = true)) {
+                    checksumUrl = assetUrl
+                } else if (name.endsWith(".apk", ignoreCase = true)) {
+                    apkUrl = assetUrl
                 }
             }
             if (apkUrl.isBlank()) throw IOException("The release APK is not available yet.")
-            return NuviaRelease(version, json.optString("body"), apkUrl)
+            if (checksumUrl.isBlank()) throw IOException("The release checksum is not available yet.")
+            return NuviaRelease(version, json.optString("body"), apkUrl, checksumUrl)
         } finally {
             connection.disconnect()
         }
     }
 
-    /** Downloads the published APK into app-private cache. Call from an IO dispatcher. */
+    /** Downloads the APK and verifies its published SHA-256 before returning it. Call on IO. */
     fun downloadApk(context: Context, release: NuviaRelease): File {
         val directory = File(context.cacheDir, "updates").apply { mkdirs() }
         val destination = File(directory, "nuvia-update.apk")
-        val connection = (URL(release.apkUrl).openConnection() as HttpURLConnection).apply {
+        val temporary = File(directory, "nuvia-update.apk.part")
+        temporary.delete()
+
+        val apkConnection = (URL(release.apkUrl).openConnection() as HttpURLConnection).apply {
             instanceFollowRedirects = true
             connectTimeout = 15_000
             readTimeout = 60_000
             setRequestProperty("User-Agent", "Nuvia-Android-Updater")
         }
         try {
-            if (connection.responseCode !in 200..299) {
-                throw IOException("APK download failed (HTTP ${connection.responseCode}).")
+            if (apkConnection.responseCode !in 200..299) {
+                throw IOException("APK download failed (HTTP ${apkConnection.responseCode}).")
             }
-            connection.inputStream.use { input ->
-                destination.outputStream().use { output -> input.copyTo(output) }
+            apkConnection.inputStream.use { input ->
+                temporary.outputStream().use { output -> input.copyTo(output) }
             }
-            if (!destination.isFile || destination.length() == 0L) {
-                throw IOException("The downloaded APK is empty.")
-            }
-            return destination
+        } catch (error: Exception) {
+            temporary.delete()
+            throw error
         } finally {
-            connection.disconnect()
+            apkConnection.disconnect()
         }
+
+        if (!temporary.isFile || temporary.length() == 0L) {
+            temporary.delete()
+            throw IOException("The downloaded APK is empty.")
+        }
+
+        val checksumConnection = (URL(release.checksumUrl).openConnection() as HttpURLConnection).apply {
+            instanceFollowRedirects = true
+            connectTimeout = 15_000
+            readTimeout = 20_000
+            setRequestProperty("User-Agent", "Nuvia-Android-Updater")
+        }
+        val expectedHash = try {
+            if (checksumConnection.responseCode !in 200..299) {
+                throw IOException("Could not retrieve the release checksum.")
+            }
+            checksumConnection.inputStream.bufferedReader().use { it.readText() }
+                .trim()
+                .split(Regex("\\s+"))
+                .firstOrNull()
+                ?.lowercase()
+                .orEmpty()
+        } catch (error: Exception) {
+            temporary.delete()
+            throw error
+        } finally {
+            checksumConnection.disconnect()
+        }
+
+        val digest = MessageDigest.getInstance("SHA-256")
+        temporary.inputStream().use { input ->
+            val buffer = ByteArray(16 * 1024)
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+                digest.update(buffer, 0, count)
+            }
+        }
+        val actualHash = digest.digest().joinToString("") { "%02x".format(it) }
+        if (expectedHash.length != 64 || !actualHash.equals(expectedHash, ignoreCase = true)) {
+            temporary.delete()
+            throw IOException("APK integrity check failed. The file was not installed.")
+        }
+
+        if (destination.exists()) destination.delete()
+        if (!temporary.renameTo(destination)) {
+            temporary.copyTo(destination, overwrite = true)
+            temporary.delete()
+        }
+        return destination
     }
 
     fun openInstaller(context: Context, apk: File): InstallerResult {
