@@ -179,9 +179,11 @@ class NuviaNotificationListener : NotificationListenerService() {
                 .setSilent(true)
 
             original.actions?.take(3)?.forEach { action ->
-                val actionIcon = action.icon.takeIf { it != 0 } ?: R.drawable.ic_nuvia_stat
+                // The source action icon resource belongs to the source app, not Nuvia.
+                // Reusing that integer as a Nuvia resource ID can throw during copy creation.
+                // Use Nuvia's own valid icon while preserving the original action intent.
                 val actionBuilder = NotificationCompat.Action.Builder(
-                    actionIcon,
+                    R.drawable.ic_nuvia_stat,
                     action.title,
                     action.actionIntent
                 )
