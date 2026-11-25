@@ -33,6 +33,7 @@ class NuviaNotificationListener : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         createMirrorChannel()
+        NuviaHyperIslandController.refreshPermanent(this)
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
@@ -40,7 +41,7 @@ class NuviaNotificationListener : NotificationListenerService() {
         if (sbn.packageName == packageName) return
 
         val notification = sbn.notification ?: return
-        if (shouldPreserveOriginal(sbn)) return
+        val preserveOriginal = shouldPreserveOriginal(sbn)
 
         val appName = getAppName(sbn.packageName)
         val title = notification.extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
@@ -53,39 +54,54 @@ class NuviaNotificationListener : NotificationListenerService() {
         if (title.isBlank() && message.isBlank()) return
 
         val hideContent = NuviaStore.isHideContentEnabled(this)
-        NuviaStore.saveNotification(
-            this,
-            NotificationRecord(
-                key = sbn.key,
-                packageName = sbn.packageName,
-                appName = appName,
-                title = if (hideContent) "New notification" else title.ifBlank { appName },
-                message = if (hideContent) "Content hidden by Nuvia" else message,
-                postedAt = sbn.postTime,
-                hasActions = !notification.actions.isNullOrEmpty()
+        val visibleTitle = if (hideContent) "New notification" else title.ifBlank { appName }
+        val visibleMessage = if (hideContent) "Content hidden by Nuvia" else message
+
+        if (!preserveOriginal) {
+            NuviaStore.saveNotification(
+                this,
+                NotificationRecord(
+                    key = sbn.key,
+                    packageName = sbn.packageName,
+                    appName = appName,
+                    title = visibleTitle,
+                    message = visibleMessage,
+                    postedAt = sbn.postTime,
+                    hasActions = !notification.actions.isNullOrEmpty()
+                )
             )
-        )
+        }
 
         val isManagedApp = NuviaStore.isPackageManaged(this, sbn.packageName)
-        val shouldReplace = NuviaStore.isReplacementEnabled(this) && isManagedApp
+        val shouldReplace = NuviaStore.isReplacementEnabled(this) && isManagedApp && !preserveOriginal
 
-        // Replacing the system notification and showing the floating island are
-        // independent features. A failed/missing replacement must not suppress the island.
+        // Native Xiaomi HyperIsland is used when available. Android overlay is only a fallback.
+        if (isManagedApp && NuviaStore.isIslandEnabled(this)) {
+            NuviaHyperIslandController.showNotification(
+                context = this,
+                sbn = sbn,
+                appName = appName,
+                title = visibleTitle,
+                message = visibleMessage
+            )
+        }
+
+        // Replacing the source notification remains an independent optional setting.
         if (shouldReplace) {
             publishReplacement(sbn, appName, title, message)
         }
+    }
 
-        if (isManagedApp &&
-            NuviaStore.isIslandEnabled(this) &&
-            Settings.canDrawOverlays(this)
+    override fun onNotificationRemoved(
+        sbn: StatusBarNotification?,
+        rankingMap: RankingMap?,
+        reason: Int
+    ) {
+        super.onNotificationRemoved(sbn, rankingMap, reason)
+        if (sbn != null && sbn.packageName != packageName &&
+            (reason == REASON_CANCEL || reason == REASON_CANCEL_ALL)
         ) {
-            IslandOverlayController.show(
-                context = this,
-                appName = appName,
-                title = if (hideContent) "New notification" else title.ifBlank { appName },
-                message = if (hideContent) "Content hidden by Nuvia" else message,
-                contentIntent = notification.contentIntent
-            )
+            NuviaHyperIslandController.dismiss(this, sbn.key)
         }
     }
 
