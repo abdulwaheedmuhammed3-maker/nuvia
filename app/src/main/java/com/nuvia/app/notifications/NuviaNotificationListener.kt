@@ -230,13 +230,7 @@ class NuviaNotificationListener : NotificationListenerService() {
         return builder.build()
     }
 
-    private fun isQuietMirrorChannelEnabled(): Boolean {
-        if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) return false
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return true
-        val channel = getSystemService(NotificationManager::class.java)
-            .getNotificationChannel(CHANNEL_ID) ?: return false
-        return channel.importance != NotificationManager.IMPORTANCE_NONE
-    }
+    private fun isQuietMirrorChannelEnabled(): Boolean = canPostQuietCopies(this)
 
     private fun createMirrorChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -267,5 +261,18 @@ class NuviaNotificationListener : NotificationListenerService() {
 
     companion object {
         private const val CHANNEL_ID = "nuvia_replacements_v2"
+
+        fun canPostQuietCopies(context: Context): Boolean {
+            if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return false
+            if (Build.VERSION.SDK_INT >= 33 &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ) return false
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return true
+            val channel = context.getSystemService(NotificationManager::class.java)
+                .getNotificationChannel(CHANNEL_ID) ?: return false
+            // Only a low/min-importance channel is safe to replace the source pop-up.
+            return channel.importance == NotificationManager.IMPORTANCE_LOW ||
+                channel.importance == NotificationManager.IMPORTANCE_MIN
+        }
     }
 }
