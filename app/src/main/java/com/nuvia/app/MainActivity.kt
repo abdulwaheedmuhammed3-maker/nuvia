@@ -901,7 +901,7 @@ private fun SettingsScreen(
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Nuvia for Android", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    Text("Early build · Version 0.1.5", color = Muted, fontSize = 10.sp)
+                    Text("Early build · Version 0.1.6", color = Muted, fontSize = 10.sp)
                 }
                 Text("BETA", color = Teal, fontSize = 9.sp, letterSpacing = 1.2.sp, fontWeight = FontWeight.Bold)
             }
