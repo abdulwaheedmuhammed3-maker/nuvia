@@ -151,6 +151,7 @@ private fun NuviaRoot() {
     var notifications by remember { mutableStateOf(NuviaStore.getNotifications(context)) }
     var listenerEnabled by remember { mutableStateOf(isNotificationListenerEnabled(context)) }
     var overlayEnabled by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
+    var notificationsAllowed by remember { mutableStateOf(NuviaHyperIslandController.canPostNotifications(context)) }
     var availableUpdate by remember { mutableStateOf<NuviaRelease?>(null) }
 
     LaunchedEffect(Unit) {
@@ -165,6 +166,7 @@ private fun NuviaRoot() {
             notifications = NuviaStore.getNotifications(context)
             listenerEnabled = isNotificationListenerEnabled(context)
             overlayEnabled = Settings.canDrawOverlays(context)
+            notificationsAllowed = NuviaHyperIslandController.canPostNotifications(context)
             delay(1200)
         }
     }
@@ -218,6 +220,7 @@ private fun NuviaRoot() {
                     Destination.SETTINGS -> SettingsScreen(
                         listenerEnabled = listenerEnabled,
                         overlayEnabled = overlayEnabled,
+                        notificationsAllowed = notificationsAllowed,
                         onRefreshPermissions = {
                             listenerEnabled = isNotificationListenerEnabled(context)
                             overlayEnabled = Settings.canDrawOverlays(context)
@@ -609,6 +612,7 @@ private fun AppSelectionRow(app: LaunchableApp, checked: Boolean, onCheckedChang
 private fun SettingsScreen(
     listenerEnabled: Boolean,
     overlayEnabled: Boolean,
+    notificationsAllowed: Boolean,
     onRefreshPermissions: () -> Unit
 ) {
     val context = LocalContext.current
@@ -653,6 +657,7 @@ private fun SettingsScreen(
         Build.VERSION.SDK_INT < 33 ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
     }
+    val canPostNotifications = hasPostPermission && notificationsAllowed
     val selectedApps = NuviaStore.managedPackages(context).size
     val postPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         showPermissionHint = !granted
@@ -730,19 +735,31 @@ private fun SettingsScreen(
                     Text("Test with selected app icon")
                 }
             }
-            if (Build.VERSION.SDK_INT >= 33) {
-                Divider(color = Line.copy(alpha = 0.7f))
-                PermissionRow(
-                    icon = Icons.Rounded.Bolt,
-                    title = "Post notifications",
-                    description = "Needed for Nuvia to publish island and quiet shade notifications.",
-                    status = if (hasPostPermission) "Allowed" else "Required",
-                    complete = hasPostPermission,
-                    onClick = {
+            Divider(color = Line.copy(alpha = 0.7f))
+            PermissionRow(
+                icon = Icons.Rounded.Bolt,
+                title = "Post notifications",
+                description = "Needed for Nuvia's island alerts and quiet notification copies.",
+                status = when {
+                    !hasPostPermission -> "Required"
+                    !notificationsAllowed -> "Disabled"
+                    else -> "Allowed"
+                },
+                complete = canPostNotifications,
+                onClick = {
+                    if (Build.VERSION.SDK_INT >= 33 && !hasPostPermission) {
                         postPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        runCatching {
+                            context.startActivity(
+                                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                    .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                        }
                     }
-                )
-            }
+                }
+            )
         }
 
         SettingsGroup("NOTIFICATION BEHAVIOUR") {
@@ -810,13 +827,13 @@ private fun SettingsScreen(
                     "When island mode is off, replace selected apps' original alerts with quiet copies in the notification shade."
                 },
                 checked = islandEnabled || replacement,
-                enabled = listenerEnabled && hasPostPermission && selectedApps > 0 && !islandEnabled,
+                enabled = listenerEnabled && canPostNotifications && selectedApps > 0 && !islandEnabled,
                 onCheckedChange = { checked ->
                     replacement = checked
                     NuviaStore.setReplacementEnabled(context, checked)
                 }
             )
-            if (islandEnabled && !hasPostPermission) {
+            if (islandEnabled && !canPostNotifications) {
                 Text(
                     text = "Allow Nuvia to post notifications so it can keep a quiet copy in your shade. Without this permission, the original app pop-up cannot be suppressed.",
                     color = Color(0xFFF4B860),
@@ -825,11 +842,12 @@ private fun SettingsScreen(
                     modifier = Modifier.padding(start = 44.dp, bottom = 4.dp)
                 )
             }
-            if (!listenerEnabled || !hasPostPermission || selectedApps == 0) {
+            if (!listenerEnabled || !canPostNotifications || selectedApps == 0) {
                 Text(
                     text = when {
                         !listenerEnabled -> "Grant notification access to enable replacement."
                         !hasPostPermission -> "Allow Nuvia to post notifications first."
+                        !notificationsAllowed -> "Enable Nuvia notifications in Android app settings."
                         else -> "Choose at least one app in the Apps tab."
                     },
                     color = Color(0xFFF4B860),
