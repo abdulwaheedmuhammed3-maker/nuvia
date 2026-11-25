@@ -2,9 +2,9 @@
 
 **Nuvia** is an early native Android notification companion built with Kotlin and Jetpack Compose. The first foundation includes a modern dark dashboard, a notification inbox, per-app selection, permission setup, an in-app Dynamic Island preview, a floating overlay preview, and a notification replacement service.
 
-> Project version: 0.1.3.
+> Project version: 0.1.4.
 
-Project status: source foundation created. This is not a tested APK yet. The current workspace does not have the Android SDK or Android Gradle tooling installed, so a device build and runtime verification still need to happen in Android Studio or CI.
+Project status: GitHub Actions builds the debug APK on pushes to main. Device-level behaviour still needs verification on the target Android/HyperOS phone.
 
 ## Open the project
 
@@ -37,6 +37,23 @@ Floating island display is enabled by default for selected apps. Original-notifi
 - On supported Xiaomi/POCO/Redmi HyperOS devices, publishes native Focus Notifications with the source app's own icon and a permanent empty island when idle. On other Android devices, uses a centred persistent capsule overlay as a fallback.
 - Preserves ongoing notifications, foreground-service notifications, group summaries, calls, alarms, media/transport, navigation and system-category notifications.
 - Supports a local privacy option that hides message content in Nuvia's inbox and replacement display.
+
+## In-app updates and release signing
+
+Nuvia checks the repository's latest GitHub Release when the Settings screen is opened. When a newer version is published, the app can download its APK and open Android's package installer. Android deliberately requires the user to approve installation; Nuvia cannot silently replace its own APK as an ordinary third-party app.
+
+Production release APKs are signed with one persistent upload key. Before publishing the first release:
+
+1. Generate a private keystore on a trusted computer with the JDK command:
+   `keytool -genkeypair -v -keystore nuvia-release.jks -keyalg RSA -keysize 4096 -validity 10000 -alias nuvia`
+2. Back up `nuvia-release.jks` securely. Never commit it to this repository or share it publicly.
+3. Base64-encode the keystore file and add these repository secrets under **Settings → Secrets and variables → Actions**: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`.
+4. Push a version tag matching the Gradle version, for example `v0.1.4`. The workflow builds a signed release APK, creates a GitHub Release, and attaches the APK and SHA-256 checksum.
+
+For PowerShell, create the Base64 value with:
+`[Convert]::ToBase64String([IO.File]::ReadAllBytes("nuvia-release.jks"))`
+
+**One-time migration warning:** earlier CI debug APKs were signed with temporary runner-generated debug keys. Android will reject a differently signed APK as an in-place update. The first permanently signed release therefore cannot update an installation made from those old CI debug APKs. Do not uninstall the current installation until any data you need has been backed up; uninstalling normally removes Nuvia's local app data.
 
 ## Important Android limitations
 
