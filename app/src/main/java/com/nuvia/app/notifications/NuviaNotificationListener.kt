@@ -193,7 +193,13 @@ class NuviaNotificationListener : NotificationListenerService() {
                     action.actionIntent
                 )
 
-                action.remoteInputs?.forEach { input ->
+                // Android separates text RemoteInputs from data-only inputs used for
+                // attachments such as images. Copy both sets so reply actions retain them.
+                val remoteInputs = buildList {
+                    addAll(action.remoteInputs.orEmpty())
+                    addAll(action.dataOnlyRemoteInputs.orEmpty())
+                }.distinctBy { it.resultKey }
+                remoteInputs.forEach { input ->
                     actionBuilder.addRemoteInput(input.toCompatRemoteInput())
                 }
                 actionBuilder.setAllowGeneratedReplies(action.allowGeneratedReplies)
