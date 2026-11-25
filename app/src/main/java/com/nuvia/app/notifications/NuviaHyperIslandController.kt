@@ -189,6 +189,27 @@ object NuviaHyperIslandController {
         runCatching { NotificationManagerCompat.from(context).cancel(id) }
     }
 
+    fun clearActiveNotifications(context: Context) {
+        val app = context.applicationContext
+        activeIds.values.toSet().forEach { id ->
+            runCatching { NotificationManagerCompat.from(app).cancel(id) }
+        }
+        activeIds.clear()
+
+        // Quiet shade copies are posted with this private tag prefix.
+        runCatching {
+            app.getSystemService(NotificationManager::class.java).activeNotifications
+                .filter { it.tag?.startsWith("nuvia:") == true }
+                .forEach { statusBarNotification ->
+                    NotificationManagerCompat.from(app).cancel(
+                        statusBarNotification.tag,
+                        statusBarNotification.id
+                    )
+                }
+        }
+        IslandOverlayController.clearNotification()
+    }
+
     private fun cancelAll(context: Context) {
         activeIds.values.toSet().forEach { id ->
             runCatching { NotificationManagerCompat.from(context).cancel(id) }
@@ -598,6 +619,17 @@ object IslandOverlayController {
         } catch (_: Exception) {
             hide()
             return false
+        }
+    }
+
+    fun clearNotification() {
+        handler.post {
+            collapseTask?.let(handler::removeCallbacks)
+            collapseTask = null
+            currentIntent = null
+            titleView?.text = ""
+            messageView?.text = ""
+            if (attached) setExpanded(false)
         }
     }
 
