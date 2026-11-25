@@ -59,4 +59,12 @@ class NotificationPreservationPolicyTest {
         )
         assertFalse(shouldPreserveOriginalNotification(false, 0, "", null))
     }
+
+    @Test
+    fun cleanupOnlyMatchesNuviaMirrorOrMarkedNativeIslandNotifications() {
+        assertTrue(shouldClearNuviaNotification("nuvia:source-key", false))
+        assertTrue(shouldClearNuviaNotification(null, true))
+        assertFalse(shouldClearNuviaNotification(null, false))
+        assertFalse(shouldClearNuviaNotification("another-tag", false))
+    }
 }
