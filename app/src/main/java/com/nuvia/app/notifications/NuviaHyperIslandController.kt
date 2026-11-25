@@ -340,6 +340,8 @@ object IslandOverlayController {
     private var iconView: ImageView? = null
     private var details: LinearLayout? = null
     private var appView: TextView? = null
+    private var timeView: TextView? = null
+    private var dotView: View? = null
     private var titleView: TextView? = null
     private var messageView: TextView? = null
     private var closeView: TextView? = null
@@ -425,6 +427,18 @@ object IslandOverlayController {
         }
         header.addView(icon, LinearLayout.LayoutParams(dp(24), dp(24)))
 
+        val dot = View(context).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.rgb(45, 212, 191))
+            }
+            visibility = View.GONE
+        }
+        header.addView(dot, LinearLayout.LayoutParams(dp(6), dp(6)).apply {
+            leftMargin = dp(8)
+            rightMargin = dp(6)
+        })
+
         val detail = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
@@ -432,11 +446,12 @@ object IslandOverlayController {
         }
         val app = TextView(context).apply {
             textSize = 9f
+            letterSpacing = 0.12f
             setTextColor(Color.rgb(172, 178, 190))
             maxLines = 1
         }
         val title = TextView(context).apply {
-            textSize = 13f
+            textSize = 15f
             setTextColor(Color.WHITE)
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
@@ -444,7 +459,17 @@ object IslandOverlayController {
         }
         detail.addView(app)
         detail.addView(title)
-        header.addView(detail, LinearLayout.LayoutParams(0, dp(38), 1f))
+        header.addView(detail, LinearLayout.LayoutParams(0, dp(40), 1f))
+
+        val time = TextView(context).apply {
+            text = "NOW"
+            textSize = 9f
+            letterSpacing = 0.08f
+            setTextColor(Color.rgb(151, 160, 177))
+            gravity = Gravity.CENTER_VERTICAL or Gravity.END
+            visibility = View.GONE
+        }
+        header.addView(time, LinearLayout.LayoutParams(dp(42), dp(30)))
 
         val close = TextView(context).apply {
             text = "×"
@@ -458,12 +483,12 @@ object IslandOverlayController {
         container.addView(header)
 
         val message = TextView(context).apply {
-            textSize = 11f
+            textSize = 12f
             setTextColor(Color.rgb(196, 202, 214))
             maxLines = 2
             ellipsize = android.text.TextUtils.TruncateAt.END
             visibility = View.GONE
-            setPadding(dp(36), dp(4), dp(8), dp(2))
+            setPadding(dp(38), dp(3), dp(8), dp(3))
         }
         container.addView(message)
 
@@ -473,6 +498,8 @@ object IslandOverlayController {
         appView = app
         titleView = title
         messageView = message
+        timeView = time
+        dotView = dot
         closeView = close
 
         val screenWidth = if (Build.VERSION.SDK_INT >= 30) {
@@ -481,6 +508,11 @@ object IslandOverlayController {
         val collapsedWidth = dp(COLLAPSED_WIDTH_DP)
         val collapsedHeight = dp(COLLAPSED_HEIGHT_DP)
         val expandedWidth = (screenWidth - dp(28)).coerceAtMost(dp(360)).coerceAtLeast(dp(250))
+
+        val statusBarResource = context.resources.getIdentifier("status_bar_height", "dimen", "android")
+        val statusBarHeight = if (statusBarResource > 0) {
+            context.resources.getDimensionPixelSize(statusBarResource)
+        } else dp(24)
 
         val layout = WindowManager.LayoutParams(
             collapsedWidth,
@@ -492,7 +524,7 @@ object IslandOverlayController {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            y = dp(3)
+            y = statusBarHeight + dp(3)
             if (Build.VERSION.SDK_INT >= 28) {
                 layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
             }
@@ -520,14 +552,20 @@ object IslandOverlayController {
             details?.visibility = View.VISIBLE
             messageView?.visibility = View.VISIBLE
             closeView?.visibility = View.VISIBLE
+            dotView?.visibility = View.VISIBLE
+            timeView?.visibility = View.VISIBLE
+            iconView?.visibility = if (iconView?.drawable != null) View.VISIBLE else View.INVISIBLE
             view.gravity = Gravity.CENTER_VERTICAL
             view.setPadding(dp(12), dp(8), dp(10), dp(8))
-            layout.width = (context.resources.displayMetrics.widthPixels - dp(28)).coerceAtMost(dp(360)).coerceAtLeast(dp(250))
-            layout.height = dp(86)
+            layout.width = (context.resources.displayMetrics.widthPixels - dp(28)).coerceAtMost(dp(380)).coerceAtLeast(dp(250))
+            layout.height = dp(96)
         } else {
             details?.visibility = View.GONE
             messageView?.visibility = View.GONE
             closeView?.visibility = View.GONE
+            dotView?.visibility = View.GONE
+            timeView?.visibility = View.GONE
+            iconView?.visibility = View.INVISIBLE
             view.gravity = Gravity.CENTER
             view.setPadding(dp(6), dp(5), dp(6), dp(5))
             layout.width = dp(COLLAPSED_WIDTH_DP)
@@ -558,6 +596,8 @@ object IslandOverlayController {
             titleView = null
             messageView = null
             closeView = null
+            timeView = null
+            dotView = null
             params = null
             currentIntent = null
             if (view != null) runCatching { windowManager?.removeView(view) }
