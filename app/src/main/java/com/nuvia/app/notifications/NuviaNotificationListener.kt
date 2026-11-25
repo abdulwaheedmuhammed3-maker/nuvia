@@ -117,18 +117,10 @@ class NuviaNotificationListener : NotificationListenerService() {
             return
         }
 
-        // Do not react to REASON_LISTENER_CANCEL: that is Nuvia dismissing the source
-        // after its quiet copy is posted. App/user cancellations should close the matching island.
-        val sourceWasCancelled = reason == REASON_CANCEL ||
-            reason == REASON_CANCEL_ALL ||
-            reason == REASON_APP_CANCEL ||
-            reason == REASON_APP_CANCEL_ALL ||
-            reason == REASON_GROUP_SUMMARY_CANCELED ||
-            reason == REASON_TIMEOUT
-        if (sourceWasCancelled || reason == REASON_CLICK) {
-            // A user/app dismissal or click on the source should also remove Nuvia's
-            // mirrored shade copy. Do not do this for REASON_LISTENER_CANCEL: that
-            // is Nuvia cancelling the source after its quiet copy was successfully posted.
+        // Nuvia's own cancelNotification() is the only source-removal event that
+        // must leave its mirrored shade copy in place. All other removal reasons,
+        // including snooze, channel/app disable, timeout and user dismissal, clear it.
+        if (shouldRemoveMirrorForSourceRemoval(reason, REASON_LISTENER_CANCEL)) {
             NotificationManagerCompat.from(this).cancel("nuvia:${sbn.key}", sbn.id)
             NuviaHyperIslandController.dismiss(this, sbn.key)
         }
