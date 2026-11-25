@@ -564,7 +564,7 @@ object IslandOverlayController {
         header.addView(detail, LinearLayout.LayoutParams(0, dp(40), 1f))
 
         val time = TextView(context).apply {
-            text = context.getString(R.string.island_time_now)
+            text = "NOW"
             textSize = 9f
             letterSpacing = 0.08f
             setTextColor(Color.rgb(151, 160, 177))
