@@ -26,6 +26,8 @@ class NuviaUpdateManagerTest {
         assertTrue(compareVersions("0.2.0", "0.10.0") < 0)
         assertEquals(0, compareVersions("0.1.8", "0.1.8.0"))
         assertTrue(compareVersions("1.0.0", "0.99.99") > 0)
+        assertTrue(compareVersions("999999999999999999999999999.0.0", "10.0.0") > 0)
+        assertTrue(compareVersions("0.999999999999999999999999999.0", "1.0.0") < 0)
     }
 
     @Test
