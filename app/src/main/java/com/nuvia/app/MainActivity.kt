@@ -747,7 +747,7 @@ private fun SettingsScreen(
             SettingSwitch(
                 icon = Icons.Rounded.Waves,
                 title = "Floating island",
-                description = "Keep a centred island visible. Incoming alerts expand with the source app's own icon, not Nuvia's.",
+                description = "Show one pop-up in island mode. Selected apps are automatically mirrored quietly to the notification shade, not shown twice.",
                 checked = islandEnabled,
                 enabled = true,
                 onCheckedChange = {
@@ -771,15 +771,28 @@ private fun SettingsScreen(
             Divider(color = Line.copy(alpha = 0.7f))
             SettingSwitch(
                 icon = Icons.Rounded.Waves,
-                title = "Replace original notifications",
-                description = "Post a Nuvia notification with supported original actions, then dismiss the original alert. The island is controlled separately.",
-                checked = replacement,
-                enabled = listenerEnabled && hasPostPermission && selectedApps > 0,
+                title = "Quiet original notifications",
+                description = if (islandEnabled) {
+                    "Automatic in island mode: selected apps are replaced by silent shade copies, leaving the island as the only pop-up."
+                } else {
+                    "When island mode is off, replace selected apps' original alerts with quiet copies in the notification shade."
+                },
+                checked = islandEnabled || replacement,
+                enabled = listenerEnabled && hasPostPermission && selectedApps > 0 && !islandEnabled,
                 onCheckedChange = { checked ->
                     replacement = checked
                     NuviaStore.setReplacementEnabled(context, checked)
                 }
             )
+            if (islandEnabled && !hasPostPermission) {
+                Text(
+                    text = "Allow Nuvia to post notifications so it can keep a quiet copy in your shade. Without this permission, the original app pop-up cannot be suppressed.",
+                    color = Color(0xFFF4B860),
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp,
+                    modifier = Modifier.padding(start = 44.dp, bottom = 4.dp)
+                )
+            }
             if (!listenerEnabled || !hasPostPermission || selectedApps == 0) {
                 Text(
                     text = when {
