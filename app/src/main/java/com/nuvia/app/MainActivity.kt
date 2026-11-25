@@ -601,6 +601,7 @@ private fun AppsScreen() {
     }
 }
 
+@Composable
 private fun AppSelectionRow(app: LaunchableApp, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(
         modifier = Modifier
