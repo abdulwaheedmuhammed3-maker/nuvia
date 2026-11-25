@@ -46,6 +46,7 @@ import java.util.concurrent.ConcurrentHashMap
 object NuviaHyperIslandController {
     private const val CHANNEL_ID = "nuvia_hyper_island_v1"
     private const val PERMANENT_ID = 9999
+    private const val EXTRA_NATIVE_ISLAND_CARD = "com.nuvia.app.extra.NATIVE_ISLAND_CARD"
     private val activeIds = ConcurrentHashMap<String, Int>()
     private val activeKeysById = ConcurrentHashMap<Int, String>()
 
@@ -243,8 +244,11 @@ object NuviaHyperIslandController {
             val manager = app.getSystemService(NotificationManager::class.java)
             manager.activeNotifications
                 .filter { notification ->
-                    notification.tag?.startsWith("nuvia:") == true ||
-                        (notification.tag == null && notification.id != PERMANENT_ID)
+                    shouldClearNuviaNotification(
+                        tag = notification.tag,
+                        isNativeIslandCard = notification.notification.extras
+                            .getBoolean(EXTRA_NATIVE_ISLAND_CARD, false)
+                    )
                 }
                 .forEach { notification ->
                     NotificationManagerCompat.from(app).cancel(notification.tag, notification.id)
@@ -379,6 +383,7 @@ object NuviaHyperIslandController {
                 .addExtras(builder.buildResourceBundle())
                 .build()
             notification.extras.putString("miui.focus.param", builder.buildJsonParam())
+            notification.extras.putBoolean(EXTRA_NATIVE_ISLAND_CARD, true)
             NotificationManagerCompat.from(context).notify(id, notification)
             true
         }.getOrDefault(false)
@@ -405,6 +410,9 @@ object NuviaHyperIslandController {
  * Non-Xiaomi fallback. The capsule stays visible and centred; notification cards expand
  * from it briefly, then collapse back to the persistent capsule instead of disappearing.
  */
+internal fun shouldClearNuviaNotification(tag: String?, isNativeIslandCard: Boolean): Boolean =
+    tag?.startsWith("nuvia:") == true || isNativeIslandCard
+
 object IslandOverlayController {
     private const val COLLAPSED_WIDTH_DP = 116
     private const val COLLAPSED_HEIGHT_DP = 36
