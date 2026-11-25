@@ -57,6 +57,8 @@ For PowerShell, create the Base64 value with:
 
 ## Important Android limitations
 
+The GitHub Release updater is intended for the sideloaded APK distribution. Before publishing Nuvia on Google Play, remove the self-update installer permission and use Play's own update delivery instead: Google Play policy does not allow `REQUEST_INSTALL_PACKAGES` to be used for an app to update itself.
+
 Nuvia is not an OS-level replacement for Android's notification shade. A third-party app cannot own or redesign the system notification panel. It can listen for notifications, publish its own notification, and dismiss the source notification when Android allows it.
 
 Copying a notification's `PendingIntent` and `RemoteInput` preserves the original action objects where the source app supports it, but it cannot guarantee every app's custom action will continue working after the original notification is dismissed. Messaging apps, banking apps, call apps and OEM-modified Android builds may behave differently. This must be tested app-by-app before enabling replacement broadly.
