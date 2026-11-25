@@ -134,24 +134,13 @@ class NuviaNotificationListener : NotificationListenerService() {
         }
     }
 
-    private fun shouldPreserveOriginal(sbn: StatusBarNotification): Boolean {
-        val notification = sbn.notification
-        val flags = notification.flags
-        if (sbn.isOngoing) return true
-        if (flags and Notification.FLAG_FOREGROUND_SERVICE != 0) return true
-        if (flags and Notification.FLAG_ONGOING_EVENT != 0) return true
-        if (flags and Notification.FLAG_GROUP_SUMMARY != 0) return true
-
-        return when (notification.category) {
-            Notification.CATEGORY_CALL,
-            Notification.CATEGORY_ALARM,
-            Notification.CATEGORY_SERVICE,
-            Notification.CATEGORY_TRANSPORT,
-            Notification.CATEGORY_NAVIGATION,
-            Notification.CATEGORY_SYSTEM -> true
-            else -> false
-        }
-    }
+    private fun shouldPreserveOriginal(sbn: StatusBarNotification): Boolean =
+        shouldPreserveOriginalNotification(
+            isOngoing = sbn.isOngoing,
+            flags = sbn.notification.flags,
+            groupKey = sbn.groupKey,
+            category = sbn.notification.category
+        )
 
     private fun publishReplacement(
         sbn: StatusBarNotification,
