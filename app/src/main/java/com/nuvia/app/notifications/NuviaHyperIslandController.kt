@@ -282,7 +282,7 @@ object NuviaHyperIslandController {
                 timeout = 60_000,
                 dismissible = true,
                 highlightColor = "#FFFFFF",
-                expandedTimeMs = 5_000
+                expandedTimeMs = NuviaStore.islandDisplayDurationSeconds(context) * 1_000
             )
             builder.setShowNotification(false)
             builder.setReopen(true)
@@ -388,7 +388,7 @@ object IslandOverlayController {
             messageView?.text = message
             setExpanded(true)
             collapseTask?.let(handler::removeCallbacks)
-            collapseTask = Runnable { setExpanded(false) }.also { handler.postDelayed(it, 5_500L) }
+            collapseTask = Runnable { setExpanded(false) }.also { handler.postDelayed(it, NuviaStore.islandDisplayDurationSeconds(context).toLong() * 1_000L) }
         }
     }
 
