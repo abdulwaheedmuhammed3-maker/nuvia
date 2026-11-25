@@ -77,7 +77,9 @@ class NuviaNotificationListener : NotificationListenerService() {
         val islandEnabled = NuviaStore.isIslandEnabled(this) && isManagedApp
 
         // Native Xiaomi HyperIsland is used when available. Android overlay is only a fallback.
-        val islandShown = if (islandEnabled) {
+        // Critical/ongoing notifications stay entirely with their source app. Do not
+        // create a second island alert for a notification we deliberately preserve.
+        val islandShown = if (islandEnabled && !preserveOriginal) {
             NuviaHyperIslandController.showNotification(
                 context = this,
                 sbn = sbn,
@@ -106,9 +108,15 @@ class NuviaNotificationListener : NotificationListenerService() {
         reason: Int
     ) {
         super.onNotificationRemoved(sbn, rankingMap, reason)
-        if (sbn != null && sbn.packageName != packageName &&
-            (reason == REASON_CANCEL || reason == REASON_CANCEL_ALL)
-        ) {
+        // Do not react to REASON_LISTENER_CANCEL: that is Nuvia dismissing the source
+        // after its quiet copy is posted. App/user cancellations should close the matching island.
+        val sourceWasCancelled = reason == REASON_CANCEL ||
+            reason == REASON_CANCEL_ALL ||
+            reason == REASON_APP_CANCEL ||
+            reason == REASON_APP_CANCEL_ALL ||
+            reason == REASON_GROUP_SUMMARY_CANCELED ||
+            reason == REASON_TIMEOUT
+        if (sbn != null && sbn.packageName != packageName && sourceWasCancelled) {
             NuviaHyperIslandController.dismiss(this, sbn.key)
         }
     }
