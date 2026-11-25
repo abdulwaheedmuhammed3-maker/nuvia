@@ -76,6 +76,14 @@ class NotificationDeliveryPolicyTest {
     }
 
     @Test
+    fun sourceRemovalClearsMirrorExceptWhenNuviaCancelsTheSource() {
+        assertFalse(shouldRemoveMirrorForSourceRemoval(1, 1))
+        assertTrue(shouldRemoveMirrorForSourceRemoval(2, 1))
+        assertTrue(shouldRemoveMirrorForSourceRemoval(8, 1))
+        assertTrue(shouldRemoveMirrorForSourceRemoval(-1, 1))
+    }
+
+    @Test
     fun failedQuietCopyRemovesTheIslandPreview() {
         assertTrue(
             shouldDismissIslandAfterReplacementFailure(
