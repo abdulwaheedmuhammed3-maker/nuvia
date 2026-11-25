@@ -652,16 +652,12 @@ private fun SettingsScreen(
     var islandDisplayDuration by remember { mutableIntStateOf(NuviaStore.islandDisplayDurationSeconds(context)) }
     var hideContent by remember { mutableStateOf(NuviaStore.isHideContentEnabled(context)) }
     var showPermissionHint by remember { mutableStateOf(false) }
-    var permissionRefresh by remember { mutableIntStateOf(0) }
-    val hasPostPermission = remember(permissionRefresh) {
-        Build.VERSION.SDK_INT < 33 ||
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-    }
+    val hasPostPermission = Build.VERSION.SDK_INT < 33 ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
     val canPostNotifications = hasPostPermission && notificationsAllowed
     val selectedApps = NuviaStore.managedPackages(context).size
     val postPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         showPermissionHint = !granted
-        permissionRefresh += 1
         onRefreshPermissions()
     }
 
