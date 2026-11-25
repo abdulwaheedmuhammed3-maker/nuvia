@@ -14,7 +14,7 @@ import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
+import androidx.core.net.toUri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -29,6 +29,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
+import androidx.core.graphics.createBitmap
 import com.nuvia.app.R
 import com.nuvia.app.data.NuviaStore
 import io.github.d4viddf.hyperisland_kit.HyperIslandNotification
@@ -103,7 +104,7 @@ object NuviaHyperIslandController {
         return try {
             val args = Bundle().apply { putString("package", context.packageName) }
             val result = context.contentResolver.call(
-                Uri.parse("content://miui.statusbar.notification.public"),
+                "content://miui.statusbar.notification.public".toUri(),
                 "canShowFocus",
                 null,
                 args
@@ -354,7 +355,7 @@ object NuviaHyperIslandController {
             builder.setReopen(true)
             builder.setIslandFirstFloat(true)
             builder.addPicture(HyperPicture(picKey, iconBitmap))
-            builder.addPicture(HyperPicture(hiddenKey, Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)))
+            builder.addPicture(HyperPicture(hiddenKey, createBitmap(1, 1, Bitmap.Config.ARGB_8888)))
             builder.setBaseInfo(type = 2, title = title.ifBlank { appName }, content = message)
             builder.setIconTextInfo(picKey = picKey, title = title.ifBlank { appName }, content = message)
             builder.setBigIslandInfo(
@@ -394,7 +395,7 @@ object NuviaHyperIslandController {
 
     private fun drawableBitmap(drawable: Drawable): Bitmap {
         return runCatching { drawable.toBitmap(width = 96, height = 96) }.getOrElse {
-            val bitmap = Bitmap.createBitmap(96, 96, Bitmap.Config.ARGB_8888)
+            val bitmap = createBitmap(96, 96, Bitmap.Config.ARGB_8888)
             drawable.setBounds(0, 0, bitmap.width, bitmap.height)
             drawable.draw(Canvas(bitmap))
             bitmap
@@ -563,7 +564,7 @@ object IslandOverlayController {
         header.addView(detail, LinearLayout.LayoutParams(0, dp(40), 1f))
 
         val time = TextView(context).apply {
-            text = "NOW"
+            text = context.getString(R.string.island_time_now)
             textSize = 9f
             letterSpacing = 0.08f
             setTextColor(Color.rgb(151, 160, 177))
