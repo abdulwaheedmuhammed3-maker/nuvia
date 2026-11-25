@@ -23,9 +23,9 @@ The project targets Android 16 (API 36) and supports Android 8.0 (API 26) and la
 3. Grant **Display over other apps** for the fallback capsule on devices without native HyperOS support.
 4. On Xiaomi/POCO/Redmi HyperOS, also enable Nuvia's **Focus notifications** and **Show in status bar** permissions for native HyperIsland rendering. On Android 13+, allow Nuvia to post notifications.
 5. Open **Apps** and select which apps Nuvia is allowed to manage.
-6. Enable **Replace original notifications** only after testing the experience with non-critical apps first.
+6. Open **Apps** and choose the apps you want Nuvia to manage. When the floating island is enabled and successfully displays an alert, Nuvia automatically dismisses that selected app's original pop-up after posting a quiet copy in the notification shade. Calls, alarms, navigation, ongoing service alerts, group summaries and system notifications are preserved.
 
-Floating island display is enabled by default for selected apps. Original-notification replacement is deliberately OFF by default; Nuvia does not automatically dismiss source notifications on first install.
+When the floating island is disabled, **Quiet original notifications** can be enabled separately to keep selected app alerts in the shade without a second pop-up.
 
 ## Duplicate notification handling
 
