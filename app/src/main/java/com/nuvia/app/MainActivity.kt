@@ -1,6 +1,7 @@
 package com.nuvia.app
 
 import android.Manifest
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -99,6 +100,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.nuvia.app.data.NotificationRecord
 import com.nuvia.app.data.NuviaStore
+import com.nuvia.app.notifications.IslandOverlayController
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -509,7 +511,7 @@ private fun AppsScreen() {
         BrandHeader("CHOOSE WHAT NUVIA MANAGES")
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Your apps", fontSize = 30.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.8).sp)
-            Text("Select the apps whose notifications Nuvia can replace.", color = Muted, fontSize = 12.sp)
+            Text("Select which apps can appear in your island. Notification replacement is optional.", color = Muted, fontSize = 12.sp)
         }
         Card(
             colors = CardDefaults.cardColors(containerColor = SurfaceOne),
@@ -597,6 +599,7 @@ private fun SettingsScreen(
 ) {
     val context = LocalContext.current
     var replacement by remember { mutableStateOf(NuviaStore.isReplacementEnabled(context)) }
+    var islandEnabled by remember { mutableStateOf(NuviaStore.isIslandEnabled(context)) }
     var hideContent by remember { mutableStateOf(NuviaStore.isHideContentEnabled(context)) }
     var showPermissionHint by remember { mutableStateOf(false) }
     var permissionRefresh by remember { mutableIntStateOf(0) }
@@ -644,6 +647,32 @@ private fun SettingsScreen(
                     }
                 }
             )
+            if (overlayEnabled) {
+                OutlinedButton(
+                    onClick = {
+                        val launchIntent = Intent(context, MainActivity::class.java)
+                        val contentIntent = PendingIntent.getActivity(
+                            context,
+                            9101,
+                            launchIntent,
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                        )
+                        IslandOverlayController.show(
+                            context = context,
+                            appName = "Nuvia",
+                            title = "Your island is working",
+                            message = "Tap this preview to return to Nuvia.",
+                            contentIntent = contentIntent
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Icon(Icons.Rounded.Waves, null, modifier = Modifier.size(17.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Test floating island")
+                }
+            }
             if (Build.VERSION.SDK_INT >= 33) {
                 Divider(color = Line.copy(alpha = 0.7f))
                 PermissionRow(
@@ -662,8 +691,32 @@ private fun SettingsScreen(
         SettingsGroup("NOTIFICATION BEHAVIOUR") {
             SettingSwitch(
                 icon = Icons.Rounded.Waves,
+                title = "Floating island",
+                description = "Show a compact alert for selected apps. This works independently of notification replacement.",
+                checked = islandEnabled,
+                enabled = true,
+                onCheckedChange = {
+                    islandEnabled = it
+                    NuviaStore.setIslandEnabled(context, it)
+                }
+            )
+            if (islandEnabled && (!overlayEnabled || selectedApps == 0)) {
+                Text(
+                    text = if (!overlayEnabled) {
+                        "Allow Display over other apps to show the island."
+                    } else {
+                        "Choose at least one app in the Apps tab."
+                    },
+                    color = Color(0xFFF4B860),
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(start = 44.dp, bottom = 4.dp)
+                )
+            }
+            Divider(color = Line.copy(alpha = 0.7f))
+            SettingSwitch(
+                icon = Icons.Rounded.Waves,
                 title = "Replace original notifications",
-                description = "Show a Nuvia copy with supported original actions, then dismiss the source notification.",
+                description = "Post a Nuvia notification with supported original actions, then dismiss the original alert. The island is controlled separately.",
                 checked = replacement,
                 enabled = listenerEnabled && hasPostPermission && selectedApps > 0,
                 onCheckedChange = { checked ->
@@ -703,7 +756,7 @@ private fun SettingsScreen(
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Nuvia for Android", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    Text("Early build · Version 0.1.0", color = Muted, fontSize = 10.sp)
+                    Text("Early build · Version 0.1.2", color = Muted, fontSize = 10.sp)
                 }
                 Text("BETA", color = Teal, fontSize = 9.sp, letterSpacing = 1.2.sp, fontWeight = FontWeight.Bold)
             }
