@@ -1,6 +1,7 @@
 package com.nuvia.app
 
 import android.Manifest
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -94,6 +95,7 @@ import androidx.core.content.ContextCompat
 import com.nuvia.app.data.NotificationRecord
 import com.nuvia.app.data.NuviaStore
 import com.nuvia.app.notifications.NuviaHyperIslandController
+import com.nuvia.app.notifications.NuviaNotificationListener
 import com.nuvia.app.updates.InstallerResult
 import com.nuvia.app.updates.NuviaRelease
 import com.nuvia.app.updates.NuviaUpdateManager
@@ -1103,7 +1105,10 @@ private fun getLaunchableApps(context: Context): List<LaunchableApp> {
 
 private fun isNotificationListenerEnabled(context: Context): Boolean {
     val enabled = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners") ?: return false
-    return enabled.split(":").any { it.contains(context.packageName) }
+    val expected = ComponentName(context, NuviaNotificationListener::class.java)
+    return enabled.split(":").any { component ->
+        ComponentName.unflattenFromString(component) == expected
+    }
 }
 
 private fun relativeTime(timestamp: Long): String {
